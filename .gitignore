@@ -1,0 +1,14 @@
+*.o
+*.so
+*.os
+*.pyc
+*~
+doc/doxygen.conf
+doc/html
+doc/xml
+doc/*.tag
+output/gen_obscore_*.csv
+python/lsst/__init__.pyc
+.idea
+.cache/
+pytest_session.txt
