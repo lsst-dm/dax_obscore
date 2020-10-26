@@ -3,9 +3,9 @@
 #
 cd "$(dirname "$0")"
 
-if [ ! -z "$LSST_STACK"]
+if [ ! -z "$LSST_STACK" ]
 then
-  source loadLSST.bash
+  source $LSST_STACK/loadLSST.bash
   setup lsst_distrib;
 fi
 

@@ -1,7 +1,7 @@
 {
-  "ds_bg3_repo":"/home/lo/work/ci_hsc_gen3/DATA",
+  "ds_bg3_repo":"/project/hsc/gen3repo/rc2w38_ssw40",
   "dataproduct_type":"image",
-  "obs_collection": "shared/ci_hsc_output",
+  "obs_collection": "RC2/W_2020_38",
   "facility_name": "SUBARU",
   "instrument_name": "HSC",
   "calib_level_map": {
