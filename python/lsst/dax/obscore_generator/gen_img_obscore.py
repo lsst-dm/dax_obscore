@@ -82,12 +82,17 @@ def exec_gen_obscore(ds_types, out_dir):
             r["planeID"] = str(uuid.uuid4())
             r["dataproduct_subtype"] = "lsst." + dsType
             r["calib_level"] = _config["calib_level_map"][dsType]
+            r["target_name"] = None
             if dsType == "calexp":
                 r["obs_id"] = ref.dataId["visit"]
-                r["target_name"] = None  # FIXME: to be scheduler field ID
+                visit = _butler.registry.queryDimensionRecords("visit", dataId=ref.dataId)
+                for d in visit:
+                    r["target_name"] = d.target_name  # scheduler field ID
             elif dsType == "raw":
                 r["obs_id"] = ref.dataId["exposure"]
-                r["target_name"] = None  # FIXME: to be scheduler field ID
+                visit = _butler.registry.queryDimensionRecords("visit", dataId=ref.dataId)
+                for d in visit:
+                    r["target_name"] = d.target_name  # scheduler field ID
             elif dsType == "deepCoadd":
                 r["obs_id"] = r["obs_collection"] + "-" + str(ref.dataId["patch"])
                 r["target_name"] = str(ref.dataId["patch"])
@@ -99,6 +104,7 @@ def exec_gen_obscore(ds_types, out_dir):
             try:
                 wcs = _butler.get(dsType + ".wcs", ref.dataId)
             except (KeyError, LookupError) as error:
+                # note: costly to load the exposure below
                 exp = _butler.getDirect(ref)
                 wcs = exp.getWcs()
             try:
@@ -109,6 +115,7 @@ def exec_gen_obscore(ds_types, out_dir):
                     raise LookupError
             except (KeyError, LookupError) as error:
                 if not exp:
+                    # note: costly to load the exposure below
                     exp = _butler.getDirect(ref)
                 imageBox = geom.Box2D(exp.getBBox())
             visitInfo = None
@@ -116,10 +123,11 @@ def exec_gen_obscore(ds_types, out_dir):
                 visitInfo = _butler.get(dsType + ".visitInfo", ref.dataId)
             except (KeyError, LookupError):
                 if not exp:
+                    # note: costly to load the exposure below
                     exp = _butler.getDirect(ref)
                 expInfo = exp.getInfo()
                 visitInfo = expInfo.getVisitInfo()
-            if ref.dataId.timespan and ref.dataId.timespan.begin:
+            if ref.dataId.hasRecords():
                 r["lastmodified"] = str(ref.dataId.timespan.begin)
             else:
                 r["lastmodified"] = DateTime.now().toString(DateTime.Timescale.UTC)
@@ -135,18 +143,17 @@ def exec_gen_obscore(ds_types, out_dir):
                     em_max = l_eff
                 r["em_min"] = em_min
                 r["em_max"] = em_max
-                r["em_filter_name"] = ref.dataId["abstract_filter"]
+                r["em_filter_name"] = ref.dataId["band"]
             except KeyError:
-                print(f"No filter found for dataId{ref.dataId}")
+                print(f"band not found in dataId{ref.dataId}")
             # get uniform date and time at middle of exposure
             et = visitInfo.getExposureTime()
             if math.isnan(et) or et is None:
                 r["t_exptime"] = et
             else:
                 r["t_exptime"] = int(et)
-            if ref.dataId.timespan and ref.dataId.timespan.begin:
+            if ref.dataId.hasRecords():
                 r["t_min"] = ref.dataId.timespan.begin.mjd
-            if ref.dataId.timespan and ref.dataId.timespan.end:
                 r["t_max"] = ref.dataId.timespan.end.mjd
             corners = [wcs.pixelToSky(pt) for pt in imageBox.getCorners()]
             poly = ""

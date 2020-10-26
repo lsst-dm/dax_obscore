@@ -1,5 +1,5 @@
 {
-  "ds_bg3_repo":"/datasets/ci_hsc_gen3/DATA" ,
+  "ds_bg3_repo":"/home/lo/work/ci_hsc_gen3/DATA",
   "dataproduct_type":"image",
   "obs_collection": "shared/ci_hsc_output",
   "facility_name": "SUBARU",

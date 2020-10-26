@@ -32,8 +32,9 @@ def exec_combine_obscore_csv(out_dir):
     src_filenames = [i for i in glob.glob(f"{file_pattern}*")]
     print(f"Processing source files: {src_filenames}")
     combined_csv_data = pd.concat([pd.read_csv(f, delimiter=',', encoding='UTF-8') for f in src_filenames])
-    combined_csv_data.to_csv(f"{out_dir}/img_obscore_data.csv", index=False, header=True)
-    print("Complete")
+    out_file = f"{out_dir}/gen_obscore_out.csv"
+    combined_csv_data.to_csv(out_file, index=False, header=True)
+    print(f"Output: {out_file} ")
 
 
 if __name__ == '__main__':
