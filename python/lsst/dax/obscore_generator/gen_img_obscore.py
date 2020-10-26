@@ -155,6 +155,9 @@ def exec_gen_obscore(ds_types, out_dir):
             if ref.dataId.hasRecords():
                 r["t_min"] = ref.dataId.timespan.begin.mjd
                 r["t_max"] = ref.dataId.timespan.end.mjd
+            else:
+                r["t_min"] = None
+                r["t_max"] = None
             corners = [wcs.pixelToSky(pt) for pt in imageBox.getCorners()]
             poly = ""
             for corner in corners:

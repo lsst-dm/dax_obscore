@@ -20,6 +20,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import os
 import click
 import glob
 import pandas as pd
@@ -31,9 +32,16 @@ def exec_combine_obscore_csv(out_dir):
     file_pattern = f"{out_dir}/gen_obscore_"
     src_filenames = [i for i in glob.glob(f"{file_pattern}*")]
     print(f"Processing source files: {src_filenames}")
-    combined_csv_data = pd.concat([pd.read_csv(f, delimiter=',', encoding='UTF-8') for f in src_filenames])
-    out_file = f"{out_dir}/gen_obscore_out.csv"
-    combined_csv_data.to_csv(out_file, index=False, header=True)
+    df = pd.concat([pd.read_csv(f, delimiter=',', encoding='UTF-8') for f in src_filenames])
+    # fix the float output issue
+    df["calib_level"] = df["calib_level"].astype(pd.Int64Dtype())
+    df["t_exptime"] = df["t_exptime"].astype(pd.Int64Dtype())
+    df["s_xel1"] = df["s_xel1"].astype(pd.Int64Dtype())
+    df["s_xel2"] = df["s_xel2"].astype(pd.Int64Dtype())
+    out_file = f"{out_dir}/obscore_out.csv"
+    if os.path.exists(out_file):
+        os.remove(out_file)
+    df.to_csv(out_file, index=False, header=True)
     print(f"Output: {out_file} ")
 
 

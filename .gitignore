@@ -9,6 +9,7 @@ doc/html
 doc/xml
 doc/*.tag
 gen_obscore_*.csv
+obscore_out.csv
 python/lsst/__init__.pyc
 .idea
 .cache/

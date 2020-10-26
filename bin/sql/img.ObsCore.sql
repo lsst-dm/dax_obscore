@@ -1,4 +1,6 @@
 
+drop table if exists imgserv.obscore;
+
 create table imgserv.obscore
 (
     dataproduct_type varchar(64),
