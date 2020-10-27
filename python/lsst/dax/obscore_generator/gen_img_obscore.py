@@ -71,7 +71,7 @@ def exec_gen_obscore(ds_types, out_dir):
         ds_collection = _config["obs_collection"]
         ds_obj = _butler.registry.queryDatasets(dsType, collections=[ds_collection])
         n = len(list(ds_obj))
-        print(f"Processing ds={dsType} n={n} ...")
+        print(f"Processing ds={_config['ds_bg3_repo']} dsType={dsType} n={n} ...")
         df = pd.DataFrame([])
         i = 0
         for ref in _butler.registry.queryDatasets(dsType, collections=[ds_collection]):
