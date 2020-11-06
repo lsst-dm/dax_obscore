@@ -31,7 +31,7 @@ import pandas as pd
 def exec_combine_obscore_csv(out_dir):
     file_pattern = f"{out_dir}/gen_obscore_"
     src_filenames = [i for i in glob.glob(f"{file_pattern}*")]
-    print(f"Processing source files: {src_filenames}")
+    print(f"Combining source files: {src_filenames}")
     df = pd.concat([pd.read_csv(f, delimiter=',', encoding='UTF-8') for f in src_filenames])
     # fix the float output issue
     df["calib_level"] = df["calib_level"].astype(pd.Int64Dtype())
