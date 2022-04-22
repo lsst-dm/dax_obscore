@@ -1,2 +1,3 @@
 # dax_obscore
-Tool to generate ObsCore data for LSST processed images using Butler Gen 3.
+
+Tools to generate ObsCore data for LSST processed images using Butler Gen 3.
