@@ -1,0 +1,42 @@
+facility_name: SUBARU
+obs_collection: LSST.DRP0
+collections: ["HSC/runs/RC2/w_2022_16/DM-34451"]
+dataset_types:
+  -
+    name: raw
+    dataproduct_type: image
+    dataproduct_subtype: lsst.raw
+    calib_level: 1
+    obs_id_fmt: "{exposure}"
+    o_ucd: phot.count
+    access_format: image/fits
+  -
+    name: calexp
+    dataproduct_type: image
+    dataproduct_subtype: lsst.calexp
+    calib_level: 2
+    obs_id_fmt: "{visit}"
+    o_ucd: phot.count
+    access_format: image/fits
+  -
+    name: deepCoadd
+    dataproduct_type: image
+    dataproduct_subtype: lsst.coadd
+    calib_level: 3
+    obs_id_fmt: "{skymap}-{tract}-{patch}"
+    o_ucd: phot.count
+    access_format: image/fits
+spectral_ranges:
+    "HSC-G": [400., 500.]
+    "HSC-R": [500., 700.]
+    "HSC-R2": [500., 700.]
+    "HSC-I": [700., 850.]
+    "HSC-I2": [700., 850.]
+    "HSC-Y": [950, 1000]
+    "HSC-Z": [900, 950]
+    "N921": [500., 700.]
+    "g": [400., 500.]
+    "r": [500., 700.]
+    "i": [700., 850.]
+    "z": [950, 1000]
+    "y": [900, 950]
