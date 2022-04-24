@@ -1,0 +1,42 @@
+facility_name: Subaru
+obs_collection: LSST.DRP0
+collections: ["HSC/runs/RC2/w_2022_16/DM-34451"]
+dataset_types:
+  -
+    name: raw
+    dataproduct_type: image
+    dataproduct_subtype: lsst.raw
+    calib_level: 1
+    obs_id_fmt: "{exposure}"
+    o_ucd: phot.count
+    access_format: image/fits
+  -
+    name: calexp
+    dataproduct_type: image
+    dataproduct_subtype: lsst.calexp
+    calib_level: 2
+    obs_id_fmt: "{visit}"
+    o_ucd: phot.count
+    access_format: image/fits
+  -
+    name: deepCoadd
+    dataproduct_type: image
+    dataproduct_subtype: lsst.coadd
+    calib_level: 3
+    obs_id_fmt: "{skymap}-{tract}-{patch}"
+    o_ucd: phot.count
+    access_format: image/fits
+spectral_ranges:
+  "HSC-G": [406., 545.]
+  "HSC-R": [543., 693.]
+  "HSC-R2": [542., 693.]
+  "HSC-I": [690., 842.]
+  "HSC-I2": [692., 850.]
+  "HSC-Z": [852., 928.]
+  "HSC-Y": [937., 1015.]
+  "N921": [914.7, 928.1]
+  "g": [406., 545.]
+  "r": [542., 693.]
+  "i": [692., 850.]
+  "z": [852., 928.]
+  "y": [937., 1015.]
