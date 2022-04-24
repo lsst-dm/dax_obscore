@@ -34,13 +34,16 @@ class TestCase(unittest.TestCase):
 
         butler = None
 
-        config = ExporterConfig(obs_collection="")
+        config = ExporterConfig(obs_collection="", dataset_types=[], facility_name="FACILITY")
         xprtr = ObscoreExporter(butler, config)
         self.assertEqual(xprtr.schema.names, [col[0] for col in _STATIC_SCHEMA])
 
         # extra columns from top-level config
         config = ExporterConfig(
-            obs_collection="", extra_columns={"c1": 1, "c2": "string", "c3": 1e10}
+            obs_collection="",
+            extra_columns={"c1": 1, "c2": "string", "c3": 1e10},
+            dataset_types=[],
+            facility_name="FACILITY",
         )
         xprtr = ObscoreExporter(butler, config)
         self.assertEqual(
@@ -69,6 +72,7 @@ class TestCase(unittest.TestCase):
                     extra_columns={"c3": 1e10},
                 ),
             ],
+            facility_name="FACILITY",
         )
         xprtr = ObscoreExporter(butler, config)
         self.assertEqual(
@@ -98,6 +102,7 @@ class TestCase(unittest.TestCase):
                     extra_columns={"em_xel": "string"},
                 ),
             ],
+            facility_name="FACILITY",
         )
         xprtr = ObscoreExporter(butler, config)
         self.assertEqual(xprtr.schema.names, [col[0] for col in _STATIC_SCHEMA])

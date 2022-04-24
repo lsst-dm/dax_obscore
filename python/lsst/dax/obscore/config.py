@@ -23,7 +23,7 @@ from __future__ import annotations
 
 __all__ = ["DatasetTypeConfig", "ExporterConfig"]
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
@@ -43,6 +43,15 @@ class DatasetTypeConfig(BaseModel):
     calib_level: int
     """Value for the ``calib_level`` column."""
 
+    o_ucd: Optional[str] = None
+    """Value for the ``o_ucd`` column."""
+
+    access_format: Optional[str] = None
+    """Value for the ``access_format`` column."""
+
+    obs_id_fmt: Optional[str] = None
+    """Format string for ``obs_id`` column"""
+
     extra_columns: Optional[Dict[str, Any]] = None
     """Values for additional columns"""
 
@@ -53,14 +62,28 @@ class ExporterConfig(BaseModel):
     collections: Optional[List[str]] = None
     """Names of registry collections to search, """
 
-    dataset_types: List[DatasetTypeConfig] = None
+    dataset_types: List[DatasetTypeConfig]
     """Per-dataset type configuration."""
 
     obs_collection: str
     """Value for the ``obs_collection`` column."""
 
+    facility_name: str
+    """Value for the ``facility_name`` column."""
+
     extra_columns: Optional[Dict[str, Any]] = None
     """Values for additional columns"""
 
+    spectral_ranges: Dict[str, Tuple[float, float]] = {}
+    """Maps band name or filter name to a min/max of spectral range.
+    """
+
+    use_butler_uri: bool = True
+    """If true then use Butler URI for ``access_url``, otherwise generate a
+    DataLink URL."""
+
     batch_size: int = 10_000
     """Number of records in a pyarrow RecordBatch"""
+
+    parquet_compression: str = "snappy"
+    """Compression method for parquet files"""

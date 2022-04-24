@@ -20,9 +20,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import click
+
 import glob
+import os
+
+import click
 import pandas as pd
 
 
@@ -32,7 +34,7 @@ def exec_combine_obscore_csv(out_dir):
     file_pattern = f"{out_dir}/gen_obscore_"
     src_filenames = [i for i in glob.glob(f"{file_pattern}*")]
     print(f"Combining source files: {src_filenames}")
-    df = pd.concat([pd.read_csv(f, delimiter=',', encoding='UTF-8') for f in src_filenames])
+    df = pd.concat([pd.read_csv(f, delimiter=",", encoding="UTF-8") for f in src_filenames])
     # fix the float output issue
     df["calib_level"] = df["calib_level"].astype(pd.Int64Dtype())
     df["t_exptime"] = df["t_exptime"].astype(pd.Int64Dtype())
@@ -45,5 +47,5 @@ def exec_combine_obscore_csv(out_dir):
     print(f"Output: {out_file} ")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exec_combine_obscore_csv()

@@ -35,7 +35,7 @@ from ... import script
 @repo_argument(required=True)
 @destination_argument(
     required=True,
-    help="DESTINATION is the location of the output parquet file.",
+    help="DESTINATION is the location of the output file.",
     type=MWPath(file_okay=True, dir_okay=False, writable=True),
 )
 @click.option(
@@ -44,6 +44,12 @@ from ... import script
     type=MWPath(file_okay=True, dir_okay=False, exists=True),
     help="Location of the configuration file in YAML format.",
     required=True,
+)
+@click.option(
+    "--format",
+    help="Output format, one of 'parquet' or 'csv'.",
+    type=click.Choice(["csv", "parquet"]),
+    default="parquet",
 )
 @options_file_option()
 def obscore_export(*args: Any, **kwargs: Any) -> None:
