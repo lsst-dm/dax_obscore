@@ -26,7 +26,7 @@ from lsst.daf.butler import Butler, Config
 from .. import ExporterConfig, ObscoreExporter
 
 
-def obscore_export(repo: str, destination: str, config: str) -> None:
+def obscore_export(repo: str, destination: str, config: str, format: str) -> None:
     """Export Butler datasets as ObsCore Data Model in parquet format.
 
     Parameters
@@ -37,9 +37,16 @@ def obscore_export(repo: str, destination: str, config: str) -> None:
         Location of the output file.
     config : `str`
         Location of the configuration file.
+    format : `str`
+        Output format, 'csv' or 'parquet'
     """
     butler = Butler(repo, writeable=False)
     config_data = Config(config)
     cfg = ExporterConfig.parse_obj(config_data)
     exporter = ObscoreExporter(butler, cfg)
-    exporter.to_parquet(destination)
+    if format == "parquet":
+        exporter.to_parquet(destination)
+    elif format == "csv":
+        exporter.to_csv(destination)
+    else:
+        raise ValueError(f"Unexpected output format {format:r}")

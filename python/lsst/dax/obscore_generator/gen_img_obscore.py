@@ -20,20 +20,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import uuid
-import urllib.parse as UrlParser
-import math
-import pandas as pd
+
 import json
+import math
+import os
+import urllib.parse as UrlParser
+import uuid
 
-# import cProfile
 import click
-
-from lsst.daf.base.dateTime.dateTime import DateTime
-from lsst.obs.base import Instrument
-from lsst.daf.butler import Butler
 import lsst.geom as geom
+import pandas as pd
+from lsst.daf.base.dateTime.dateTime import DateTime
+from lsst.daf.butler import Butler
+from lsst.obs.base import Instrument
 
 ROOT = os.path.dirname(__file__)
 config_file = os.path.join(ROOT + "/config/gen_obscore_config.json")
@@ -52,19 +51,17 @@ _butler = Butler(_config["ds_bg3_repo"], collections=_config["obs_collection"])
 _instrument = Instrument.fromName(_config["instrument_name"], _butler.registry)
 
 
-'''
+"""
 pr = cProfile.Profile()
 pr.enable()
-'''
+"""
 
 
 @click.command()
 @click.option("--ds_types")
 @click.option("--out_dir")
 def exec_gen_obscore(ds_types, out_dir):
-    """ Generate image obscore data in CSV.
-
-    """
+    """Generate image obscore data in CSV."""
     print(f"Begin ObsCore data extraction from collection={_config['obs_collection']} ...")
     ds_type_list = ds_types.split(",")
     for dsType in ds_type_list:
@@ -76,7 +73,7 @@ def exec_gen_obscore(ds_types, out_dir):
         i = 0
         for ref in _butler.registry.queryDatasets(dsType, collections=[ds_collection]):
             i += 1
-            print(f"\rProcessing {i} of {n}", end='')
+            print(f"\rProcessing {i} of {n}", end="")
             r = _template.copy()
             r["core_id"] = str(uuid.uuid4())  # PRIMARY KEY
             r["planeID"] = str(uuid.uuid4())
@@ -103,7 +100,7 @@ def exec_gen_obscore(ds_types, out_dir):
             exp = None
             try:
                 wcs = _butler.get(dsType + ".wcs", ref.dataId)
-            except (KeyError, LookupError) as error:
+            except (KeyError, LookupError):
                 # note: costly to load the exposure below
                 exp = _butler.getDirect(ref)
                 wcs = exp.getWcs()
@@ -113,7 +110,7 @@ def exec_gen_obscore(ds_types, out_dir):
                     imageBox = geom.Box2D(bbox)
                 else:
                     raise LookupError
-            except (KeyError, LookupError) as error:
+            except (KeyError, LookupError):
                 if not exp:
                     # note: costly to load the exposure below
                     exp = _butler.getDirect(ref)
@@ -195,11 +192,11 @@ def exec_gen_obscore(ds_types, out_dir):
     print("ObsCore data generation complete")
 
 
-'''
+"""
 pr.disable()
-pr.print_stats(sort="calls") 
-'''
+pr.print_stats(sort="calls")
+"""
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exec_gen_obscore()
