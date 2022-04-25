@@ -28,7 +28,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, cast
 
 import astropy.time
 import pyarrow
-from lsst.daf.butler import Butler, DatasetRef, Dimension, DimensionRecord
+from lsst.daf.butler import Butler, DataCoordinate, Dimension, DimensionRecord
 from lsst.sphgeom import ConvexPolygon, LonLat, Region
 from pyarrow import RecordBatch, Schema
 from pyarrow.csv import CSVWriter
@@ -139,7 +139,12 @@ class ObscoreExporter:
         self.config = config
         self.extra_columns: Dict[str, Any] = {}
         self.schema = self._make_schema(config)
+        # Maps instrument and visit ID to a region
         self._visit_regions: Optional[Dict[Tuple[str, int], Region]] = None
+        # Maps instrument+visit+detector to a region
+        self._visit_detector_regions: Optional[Dict[Tuple[str, int, int], Region]] = None
+        # Maps instrument and exposure ID to a visit ID
+        self._exposure_to_visit: Optional[Dict[Tuple[str, int], int]] = None
 
     def to_parquet(self, output: str) -> None:
         """Export Butler datasets as ObsCore Data Model in parquet format.
@@ -248,11 +253,11 @@ class ObscoreExporter:
                     record["t_max"] = t_max.mjd
 
                 region = dataId.region
-                if exposure in dataId.records:
+                if exposure in dataId:
                     if (dimension_record := dataId.records[exposure]) is not None:
                         self._exposure_records(dimension_record, record)
-                        region = self._exposure_region(dimension_record)
-                elif visit in dataId.records:
+                        region = self._exposure_region(dataId)
+                elif visit in dataId:
                     if (dimension_record := dataId.records[visit]) is not None:
                         self._visit_records(dimension_record, record)
 
@@ -332,27 +337,60 @@ class ObscoreExporter:
         record["t_exptime"] = dimension_record.exposure_time
         record["target_name"] = dimension_record.target_name
 
-    def _exposure_region(self, exposure_record: DimensionRecord) -> Optional[Region]:
+    def _exposure_region(self, dataId: DataCoordinate) -> Optional[Region]:
         """Return a Region for an exposure.
 
         This code tries to find a matching visit for an exposure and use the
         region from that visit.
         """
 
-        if self._visit_regions is None:
-
-            self._visit_regions = {}
-
-            # Read all visits, there is a chance we need most of them anyways,
-            # and trying to filter by dataset type and collection makes it
-            # much slower.
-            records = self.butler.registry.queryDimensionRecords("visit")
+        if self._exposure_to_visit is None:
+            self._exposure_to_visit = {}
+            # Read complete relation between visits and exposures. There could
+            # be multiple visits defined per exposure, but they are supposed to
+            # have the same region, so we take one of them at random.
+            records = self.butler.registry.queryDimensionRecords("visit_definition")
             for record in records:
-                self._visit_regions[(record.instrument, record.id)] = record.region
+                self._exposure_to_visit[(record.instrument, record.exposure)] = record.visit
+            _LOG.debug("read %d exposure-to-visit records", len(self._exposure_to_visit))
 
-        return self._visit_regions.get(
-            (exposure_record.instrument, exposure_record.group_id)
-        )
+        # map exposure to a visit
+        visit = self._exposure_to_visit.get((dataId["instrument"], dataId["exposure"]))
+        if visit is None:
+            return None
+
+        if "detector" in dataId:
+
+            if self._visit_detector_regions is None:
+
+                self._visit_detector_regions = {}
+
+                # Read all visits, there is a chance we need most of them
+                # anyways, and trying to filter by dataset type and collection
+                # makes it much slower.
+                records = self.butler.registry.queryDimensionRecords("visit_detector_region")
+                for record in records:
+                    key = record.instrument, record.visit, record.detector
+                    self._visit_detector_regions[key] = record.region
+                _LOG.debug("read %d visit-detector regions", len(self._visit_detector_regions))
+
+            return self._visit_detector_regions.get((dataId["instrument"], visit, dataId["detector"]))
+
+        else:
+
+            if self._visit_regions is None:
+
+                self._visit_regions = {}
+
+                # Read all visits, there is a chance we need most of them
+                # anyways, and trying to filter by dataset type and collection
+                # makes it much slower.
+                records = self.butler.registry.queryDimensionRecords("visit")
+                for record in records:
+                    self._visit_regions[(record.instrument, record.id)] = record.region
+                _LOG.debug("read %d visit regions", len(self._visit_regions))
+
+            return self._visit_regions.get((dataId["instrument"], visit))
 
     def _make_datalink_url(self, ref: DatasetRef) -> str:
         """Generate DataLink URI for a given dataset."""
