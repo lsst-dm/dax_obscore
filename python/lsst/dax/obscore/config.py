@@ -49,6 +49,11 @@ class DatasetTypeConfig(BaseModel):
     obs_id_fmt: Optional[str] = None
     """Format string for ``obs_id`` column"""
 
+    datalink_url_fmt: Optional[str] = None
+    """Format string for ``access_url`` column for DataLink (when
+    ``use_butler_uri`` is False).
+    """
+
     extra_columns: Optional[Dict[str, Any]] = None
     """Values for additional columns"""
 

@@ -215,6 +215,7 @@ class ObscoreExporter:
         band = cast(Dimension, universe["band"])
         exposure = universe["exposure"]
         visit = universe["visit"]
+        physical_filter = cast(Dimension, universe["physical_filter"])
 
         registry = self.butler.registry
         for dataset_type_name, dataset_config in self.config.dataset_types.items():
@@ -264,7 +265,7 @@ class ObscoreExporter:
 
                 if band in dataId:
                     em_range = None
-                    if (label := dataId.get("physical_filter")) is not None:
+                    if (label := dataId.get(physical_filter)) is not None:
                         em_range = self.config.spectral_ranges.get(label)
                     if not em_range:
                         band_name = dataId[band]
@@ -273,14 +274,17 @@ class ObscoreExporter:
                     if em_range:
                         record["em_min"], record["em_max"] = em_range
                     else:
-                        _LOG.warning("could not find spectral range for dataId=%s", dataId)
+                        _LOG.warning("could not find spectral range for dataId=%s", dataId.full)
                     record["em_filter_name"] = dataId["band"]
 
+                # Dictionary to use for substitutions when formatting various
+                # strings.
+                fmt_kws: Dict[str, Any] = dict(records=dataId.records)
+                fmt_kws.update(dataId.byName())
+                fmt_kws.update(record)
                 if dataset_config.obs_id_fmt:
-                    kws: Dict[str, Any] = dict(records=dataId.records)
-                    kws.update(dataId.byName())
-                    kws.update(record)
-                    record["obs_id"] = dataset_config.obs_id_fmt.format(**kws)
+                    record["obs_id"] = dataset_config.obs_id_fmt.format(**fmt_kws)
+                    fmt_kws["obs_id"] = record["obs_id"]
 
                 if self.config.use_butler_uri:
                     try:
@@ -291,7 +295,9 @@ class ObscoreExporter:
                         # butler file deleted), can ignore for now.
                         _LOG.warning(f"Datastore file does not exist for {ref}")
                 else:
-                    record["access_url"] = self._make_datalink_url(ref)
+                    if dataset_config.datalink_url_fmt is None:
+                        raise ValueError(f"dataset type {dataset_type_name} doea not define datalink_url_fmt")
+                    record["access_url"] = dataset_config.datalink_url_fmt.format(**fmt_kws)
 
                 # add extra columns
                 if self.config.extra_columns:
@@ -403,7 +409,3 @@ class ObscoreExporter:
                 _LOG.debug("read %d visit regions", len(self._visit_regions))
 
             return self._visit_regions.get((instrument, visit))
-
-    def _make_datalink_url(self, ref: DatasetRef) -> str:
-        """Generate DataLink URI for a given dataset."""
-        raise NotImplementedError()

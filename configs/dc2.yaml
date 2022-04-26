@@ -1,0 +1,43 @@
+facility_name: Rubin-LSST
+obs_collection: LSST.DC2
+collections: ["2.2i/runs/DP0.1"]
+use_butler_uri: false
+dataset_types:
+  raw:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.raw
+    calib_level: 1
+    obs_id_fmt: "{records[exposure].obs_id}"
+    o_ucd: phot.count
+    access_format: image/fits
+    datalink_url_fmt: "http://datalink.org/{obs_id}"
+  calexp:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.calexp
+    calib_level: 2
+    obs_id_fmt: "{records[visit].name}"
+    o_ucd: phot.count
+    access_format: image/fits
+    datalink_url_fmt: "http://datalink.org/{obs_id}"
+  deepCoadd_calexp:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.deepCoadd_calexp
+    calib_level: 3
+    obs_id_fmt: "{skymap}-{tract}-{patch}"
+    o_ucd: phot.count
+    access_format: image/fits
+    datalink_url_fmt: "http://datalink.org/{obs_id}"
+  deepCoadd_forced_src:
+    dataproduct_type: measurements
+    dataproduct_subtype: lsst.deepCoadd_forced_src
+    calib_level: 3
+    obs_id_fmt: "{skymap}-{tract}-{patch}"
+    access_format: application/x-votable+xml;content=datalink
+    datalink_url_fmt: "http://datalink.org/{obs_id}"
+spectral_ranges:
+  "u": [330., 400.]
+  "g": [402., 552.]
+  "r": [552., 691.]
+  "i": [691., 818.]
+  "z": [818., 922.]
+  "y": [970., 1060.]
