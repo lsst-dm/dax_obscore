@@ -41,28 +41,31 @@ class DatasetTypeConfig(BaseModel):
     """Value for the ``calib_level`` column."""
 
     o_ucd: Optional[str] = None
-    """Value for the ``o_ucd`` column."""
+    """Value for the ``o_ucd`` column, optional."""
 
     access_format: Optional[str] = None
-    """Value for the ``access_format`` column."""
+    """Value for the ``access_format`` column, optional."""
 
     obs_id_fmt: Optional[str] = None
-    """Format string for ``obs_id`` column"""
+    """Format string for ``obs_id`` column, optional. Uses `str.format`
+    syntax.
+    """
 
     datalink_url_fmt: Optional[str] = None
     """Format string for ``access_url`` column for DataLink (when
-    ``use_butler_uri`` is False).
+    ``use_butler_uri`` is False), optional.
     """
 
     extra_columns: Optional[Dict[str, Any]] = None
-    """Values for additional columns"""
+    """Values for additional columns, optional"""
 
 
 class ExporterConfig(BaseModel):
     """Complete configuration for ObscoreExporter."""
 
     collections: Optional[List[str]] = None
-    """Names of registry collections to search, """
+    """Names of registry collections to search, if missing then all collections
+    are used."""
 
     dataset_types: Dict[str, DatasetTypeConfig]
     """Per-dataset type configuration, key is the dataset type name."""
@@ -74,11 +77,10 @@ class ExporterConfig(BaseModel):
     """Value for the ``facility_name`` column."""
 
     extra_columns: Optional[Dict[str, Any]] = None
-    """Values for additional columns"""
+    """Values for additional columns, optional."""
 
     spectral_ranges: Dict[str, Tuple[float, float]] = {}
-    """Maps band name or filter name to a min/max of spectral range.
-    """
+    """Maps band name or filter name to a min/max of spectral range."""
 
     use_butler_uri: bool = True
     """If true then use Butler URI for ``access_url``, otherwise generate a
