@@ -131,7 +131,8 @@ class ObscoreExporter:
     ----------
     butler : `lsst.daf.butler.Butler`
         Data butler.
-    config : `lsst.daf.butler.Config`
+    config : `lsst.dax.obscore.ExporterConfig`
+        Exporter configuration.
     """
 
     def __init__(self, butler: Butler, config: ExporterConfig):
