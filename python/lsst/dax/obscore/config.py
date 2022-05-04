@@ -31,9 +31,6 @@ from pydantic import BaseModel
 class DatasetTypeConfig(BaseModel):
     """Configuration describing dataset type-related options."""
 
-    name: str
-    """Dataset type name"""
-
     dataproduct_type: str
     """Value for the ``dataproduct_type`` column."""
 
@@ -62,8 +59,8 @@ class ExporterConfig(BaseModel):
     collections: Optional[List[str]] = None
     """Names of registry collections to search, """
 
-    dataset_types: List[DatasetTypeConfig]
-    """Per-dataset type configuration."""
+    dataset_types: Dict[str, DatasetTypeConfig]
+    """Per-dataset type configuration, key is the dataset type name."""
 
     obs_collection: str
     """Value for the ``obs_collection`` column."""

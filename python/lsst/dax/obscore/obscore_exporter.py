@@ -186,7 +186,7 @@ class ObscoreExporter:
 
         all_configs: List[Union[ExporterConfig, DatasetTypeConfig]] = [config]
         if config.dataset_types:
-            all_configs += config.dataset_types
+            all_configs += list(config.dataset_types.values())
         for cfg in all_configs:
             if cfg.extra_columns:
                 for col_name, col_value in cfg.extra_columns.items():
@@ -217,10 +217,10 @@ class ObscoreExporter:
         visit = universe["visit"]
 
         registry = self.butler.registry
-        for dataset_config in self.config.dataset_types:
+        for dataset_type_name, dataset_config in self.config.dataset_types.items():
 
-            _LOG.debug("Reading data for dataset %s", dataset_config.name)
-            refs = registry.queryDatasets(dataset_config.name, collections=collections)
+            _LOG.debug("Reading data for dataset %s", dataset_type_name)
+            refs = registry.queryDatasets(dataset_type_name, collections=collections)
 
             # need dimension records
             refs = refs.expanded()
@@ -277,7 +277,10 @@ class ObscoreExporter:
                     record["em_filter_name"] = dataId["band"]
 
                 if dataset_config.obs_id_fmt:
-                    record["obs_id"] = dataset_config.obs_id_fmt.format(**dataId.byName(), **record)
+                    kws: Dict[str, Any] = dict(records=dataId.records)
+                    kws.update(dataId.byName())
+                    kws.update(record)
+                    record["obs_id"] = dataset_config.obs_id_fmt.format(**kws)
 
                 if self.config.use_butler_uri:
                     try:
