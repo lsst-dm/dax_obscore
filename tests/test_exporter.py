@@ -58,20 +58,19 @@ class TestCase(unittest.TestCase):
         config = ExporterConfig(
             obs_collection="",
             extra_columns={"c1": 1},
-            dataset_types=[
-                DatasetTypeConfig(
+            dataset_types={
+                "raw": DatasetTypeConfig(
                     name="raw",
                     dataproduct_type="image",
                     calib_level=1,
                     extra_columns={"c2": "string"},
                 ),
-                DatasetTypeConfig(
-                    name="calexp",
+                "calexp": DatasetTypeConfig(
                     dataproduct_type="image",
                     calib_level=2,
                     extra_columns={"c3": 1e10},
                 ),
-            ],
+            },
             facility_name="FACILITY",
         )
         xprtr = ObscoreExporter(butler, config)
@@ -88,20 +87,18 @@ class TestCase(unittest.TestCase):
         config = ExporterConfig(
             obs_collection="",
             extra_columns={"t_xel": 1e10},
-            dataset_types=[
-                DatasetTypeConfig(
-                    name="raw",
+            dataset_types={
+                "raw": DatasetTypeConfig(
                     dataproduct_type="image",
                     calib_level=1,
                     extra_columns={"target_name": 1},
                 ),
-                DatasetTypeConfig(
-                    name="calexp",
+                "calexp": DatasetTypeConfig(
                     dataproduct_type="image",
                     calib_level=2,
                     extra_columns={"em_xel": "string"},
                 ),
-            ],
+            },
             facility_name="FACILITY",
         )
         xprtr = ObscoreExporter(butler, config)
