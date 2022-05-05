@@ -22,7 +22,14 @@
 from typing import Any
 
 import click
-from lsst.daf.butler.cli.opt import destination_argument, options_file_option, repo_argument
+from lsst.daf.butler.cli.opt import (
+    collections_option,
+    dataset_type_option,
+    destination_argument,
+    options_file_option,
+    repo_argument,
+    where_option,
+)
 from lsst.daf.butler.cli.utils import ButlerCommand, MWPath
 
 from ... import script
@@ -50,6 +57,14 @@ from ... import script
     type=click.Choice(["csv", "parquet"]),
     default="parquet",
 )
+@dataset_type_option(
+    help=(
+        "Comma-separated list of dataset types. "
+        "If specified it must be a subset of dataset types defined in configuration file."
+    )
+)
+@collections_option()
+@where_option()
 @options_file_option()
 def obscore_export(*args: Any, **kwargs: Any) -> None:
     """Export Butler datasets as ObsCore Data Model in parquet format."""

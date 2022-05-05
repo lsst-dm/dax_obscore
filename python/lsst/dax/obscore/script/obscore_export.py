@@ -21,12 +21,22 @@
 
 __all__ = ["obscore_export"]
 
+from typing import Iterable, Optional
+
 from lsst.daf.butler import Butler, Config
 
 from .. import ExporterConfig, ObscoreExporter
 
 
-def obscore_export(repo: str, destination: str, config: str, format: str) -> None:
+def obscore_export(
+    repo: str,
+    destination: str,
+    config: str,
+    format: str,
+    where: Optional[str],
+    collections: Iterable[str],
+    dataset_type: Iterable[str],
+) -> None:
     """Export Butler datasets as ObsCore Data Model in parquet format.
 
     Parameters
@@ -39,10 +49,30 @@ def obscore_export(repo: str, destination: str, config: str, format: str) -> Non
         Location of the configuration file.
     format : `str`
         Output format, 'csv' or 'parquet'
+    where : `str`
+        Optional user expression, if provided overrides one in ``config``.
+    collections : `iterable` [ `str` ]
+        Optional collection names, if provided overrides one in ``config``.
     """
     butler = Butler(repo, writeable=False)
+
     config_data = Config(config)
     cfg = ExporterConfig.parse_obj(config_data)
+    if where:
+        cfg.where = where
+    if collections:
+        cfg.collections = list(collections)
+    if dataset_type:
+        dataset_type_set = set(dataset_type)
+        # Check that configuration has all requested dataset types.
+        if not dataset_type_set.issubset(cfg.dataset_types):
+            extras = dataset_type_set - set(cfg.dataset_types)
+            raise ValueError(f"Dataset types {extras} are not defined in configuration file.")
+        # Remove dataset types that are not needed.
+        cfg.dataset_types = {
+            key: value for key, value in cfg.dataset_types.items() if key in dataset_type_set
+        }
+
     exporter = ObscoreExporter(butler, cfg)
     if format == "parquet":
         exporter.to_parquet(destination)

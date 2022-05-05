@@ -56,6 +56,10 @@ class DatasetTypeConfig(BaseModel):
     ``use_butler_uri`` is False), optional.
     """
 
+    obs_collection: Optional[str] = None
+    """Value for the ``obs_collection`` column, if specified it overrides
+    global value in `ExporterConfig`."""
+
     extra_columns: Optional[Dict[str, Any]] = None
     """Values for additional columns, optional"""
 
@@ -65,13 +69,21 @@ class ExporterConfig(BaseModel):
 
     collections: Optional[List[str]] = None
     """Names of registry collections to search, if missing then all collections
-    are used."""
+    are used. This value can be overridden with command line options.
+    """
 
     dataset_types: Dict[str, DatasetTypeConfig]
     """Per-dataset type configuration, key is the dataset type name."""
 
-    obs_collection: str
-    """Value for the ``obs_collection`` column."""
+    where: Optional[str] = None
+    """User expression to restrict the output. This value can be overridden
+    with command line options.
+    """
+
+    obs_collection: Optional[str] = None
+    """Value for the ``obs_collection`` column. This can be overridden in
+    dataset type configuration.
+    """
 
     facility_name: str
     """Value for the ``facility_name`` column."""

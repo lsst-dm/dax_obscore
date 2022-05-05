@@ -222,7 +222,7 @@ class ObscoreExporter:
         for dataset_type_name, dataset_config in self.config.dataset_types.items():
 
             _LOG.debug("Reading data for dataset %s", dataset_type_name)
-            refs = registry.queryDatasets(dataset_type_name, collections=collections)
+            refs = registry.queryDatasets(dataset_type_name, collections=collections, where=self.config.where)
 
             # need dimension records
             refs = refs.expanded()
@@ -241,7 +241,10 @@ class ObscoreExporter:
                 record["o_ucd"] = dataset_config.o_ucd
                 record["facility_name"] = self.config.facility_name
                 record["calib_level"] = dataset_config.calib_level
-                record["obs_collection"] = self.config.obs_collection
+                if dataset_config.obs_collection is not None:
+                    record["obs_collection"] = dataset_config.obs_collection
+                else:
+                    record["obs_collection"] = self.config.obs_collection
                 record["access_format"] = dataset_config.access_format
 
                 record["instrument_name"] = dataId.get("instrument")
