@@ -1,5 +1,4 @@
 click
-pandas
 pyarrow
 pyyaml
 pydantic
