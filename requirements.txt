@@ -1,4 +1,6 @@
-pandas
 click
-
-
+pyarrow
+pyyaml
+pydantic
+git+https://github.com/lsst/sphgeom@main#egg=lsst_sphgeom
+git+https://github.com/lsst/daf_butler@main#egg=daf_butler

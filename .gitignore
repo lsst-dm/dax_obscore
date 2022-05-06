@@ -10,7 +10,13 @@ doc/xml
 doc/*.tag
 gen_obscore_*.csv
 obscore_out.csv
-python/lsst/__init__.pyc
 .idea
 .cache/
 pytest_session.txt
+.sconsign.dblite
+config.log
+.coverage
+.pytest_cache/
+.mypy_cache/
+python/lsst/dax/obscore/version.py
+tests/.tests/
