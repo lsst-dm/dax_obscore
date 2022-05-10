@@ -285,6 +285,7 @@ class ObscoreExporter:
                 # strings.
                 fmt_kws: Dict[str, Any] = dict(records=dataId.records)
                 fmt_kws.update(dataId.byName())
+                fmt_kws.update(id=ref.id)
                 fmt_kws.update(record)
                 if dataset_config.obs_id_fmt:
                     record["obs_id"] = dataset_config.obs_id_fmt.format(**fmt_kws)

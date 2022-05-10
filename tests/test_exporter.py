@@ -152,7 +152,7 @@ class TestCase(unittest.TestCase):
                     dataproduct_type="image",
                     dataproduct_subtype="lsst.deepCoadd",
                     obs_id_fmt="{skymap}-{tract}-{patch}",
-                    datalink_url_fmt="http://datalink.org/{obs_id}",
+                    datalink_url_fmt="http://datalink.org/{id}",
                 ),
             },
             spectral_ranges={
