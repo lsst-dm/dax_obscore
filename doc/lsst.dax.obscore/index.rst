@@ -31,7 +31,8 @@ Possible list of attributes that can be used in the format strings includes:
 
 - names of the ``DataId`` attributes, e.g. ``instrument``,
 - ``records`` with a corresponding dimension name as an index and an attribute of that record. e.g. ``records[exposure].obs_id``,
-- names of other attributes of ObsCore data model, e.g. ``dataproduct_type``, the list of attributes is limited to a subset, currently implemented in this module.
+- ``id`` which represents dataset ID (UUID),
+- names of other attributes of ObsCore data model, e.g. ``dataproduct_type``, the list of attributes is limited to a subset currently implemented in this module.
 
 Few examples of specifying ``obs_id_fmt`` value::
 

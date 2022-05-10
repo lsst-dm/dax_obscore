@@ -1,0 +1,52 @@
+facility_name: Rubin-LSST
+obs_collection: LSST.DP02
+collections: ["2.2i/runs/test-med-1/v23_0_0_rc2/PREOPS-863"]
+use_butler_uri: false
+dataset_types:
+  raw:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.raw
+    calib_level: 1
+    obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
+    o_ucd: phot.count
+    access_format: image/fits
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
+  calexp:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.calexp
+    calib_level: 2
+    obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
+    o_ucd: phot.count
+    access_format: image/fits
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
+  deepCoadd_calexp:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.deepCoadd_calexp
+    calib_level: 3
+    obs_id_fmt: "{skymap}-{tract}-{patch}"
+    o_ucd: phot.count
+    access_format: image/fits
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
+  goodSeeingCoadd:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.goodSeeingCoadd
+    calib_level: 3
+    obs_id_fmt: "{skymap}-{tract}-{patch}"
+    o_ucd: phot.count
+    access_format: image/fits
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
+  goodSeeingDiff_differenceExp:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.goodSeeingDiff_differenceExp
+    calib_level: 3
+    obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
+    o_ucd: phot.count
+    access_format: image/fits
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
+spectral_ranges:
+  "u": [330., 400.]
+  "g": [402., 552.]
+  "r": [552., 691.]
+  "i": [691., 818.]
+  "z": [818., 922.]
+  "y": [970., 1060.]
