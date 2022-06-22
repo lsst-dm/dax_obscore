@@ -63,7 +63,7 @@ class TestCase(unittest.TestCase):
         # extra columns from top-level config
         config = ExporterConfig(
             obs_collection="",
-            extra_columns={"c1": 1, "c2": "string", "c3": 1e10},
+            extra_columns={"c1": 1, "c2": "string", "c3": {"template": "{calib_level}", "type": "float"}},
             dataset_types=[],
             facility_name="FACILITY",
         )
@@ -159,6 +159,7 @@ class TestCase(unittest.TestCase):
                 "r": [552.0, 691.0],
                 "i": [691.0, 818.0],
             },
+            extra_columns={"day_obs": {"template": "{records[visit].day_obs}", "type": "int"}},
         )
         xprtr = ObscoreExporter(butler, config)
         output = os.path.join(self.root, "output.parquet")
@@ -172,7 +173,7 @@ class TestCase(unittest.TestCase):
                 yield value.as_py()
 
         # Do some trivial checks
-        self.assertEqual(table.num_columns, 30)
+        self.assertEqual(table.num_columns, 31)
         self.assertEqual(table.num_rows, 35)
         self.assertEqual(set(_to_python("facility_name")), {"Subaru"})
         self.assertEqual(set(_to_python("obs_collection")), {"obs-collection"})
@@ -181,6 +182,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(set(_to_python("calib_level")), {2, 3})
         self.assertEqual(set(_to_python("instrument_name")), {"HSC", None})
         self.assertEqual(set(_to_python("em_filter_name")), {"i", "r"})
+        self.assertEqual(set(_to_python("day_obs")), {20130617, 20131102, None})
         for value in _to_python("s_region"):
             self.assertTrue(value.startswith("POLYGON "))
 
