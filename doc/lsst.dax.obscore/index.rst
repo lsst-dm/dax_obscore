@@ -58,7 +58,7 @@ It is possible to use format strings in ``extra_columns`` values by providing ``
 Supported data types are "int", "float", "str", and "bool".
 If data type is not specified then "str" is assumed.
 The "bool" type expects values (after template expansion) to be integer numbers, "0" maps to false, other values map to true.
-If the attribute in the template string does not exist for a particular record then the whole value with be replaces with ``None/NULL``.
+If the attribute in the template string does not exist for a particular record then the whole value will be replaced with ``None/NULL``.
 
 ``obscore-export`` will read datasets from Registry using collections specified in ``collections`` configuration attribute and dataset types that appear in ``dataset_types`` attribute (indexed by dataset type names).
 
