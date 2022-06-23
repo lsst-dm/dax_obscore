@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["ObscoreExporter"]
 
 import logging
+from collections.abc import Callable, Mapping
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, cast
 
 import astropy.time
@@ -81,6 +82,18 @@ _PYARROW_TYPE = {
     int: pyarrow.int64(),
     float: pyarrow.float64(),
     str: pyarrow.string(),
+    "bool": pyarrow.bool_(),
+    "int": pyarrow.int64(),
+    "float": pyarrow.float64(),
+    "str": pyarrow.string(),
+}
+
+# Map type name to a conversion method that takes string.
+_TYPE_CONVERSION: Mapping[str, Callable[[str], Any]] = {
+    "bool": lambda x: bool(int(x)),  # expect integer number/string as input.
+    "int": int,
+    "float": float,
+    "str": str,
 }
 
 
@@ -193,10 +206,13 @@ class ObscoreExporter:
                 for col_name, col_value in cfg.extra_columns.items():
                     if col_name in columns:
                         continue
-                    col_type = _PYARROW_TYPE.get(type(col_value))
+                    if isinstance(col_value, Mapping):
+                        col_type = _PYARROW_TYPE[col_value["type"]]
+                    else:
+                        col_type = _PYARROW_TYPE.get(type(col_value))
                     if col_type is None:
                         raise TypeError(
-                            f"Unexpected type in extra_columns: column={col_name}, value={col_value:r}"
+                            f"Unexpected type in extra_columns: column={col_name}, value={col_value}"
                         )
                     schema.append((col_name, col_type))
                     columns.add(col_name)
@@ -284,7 +300,7 @@ class ObscoreExporter:
                 # Dictionary to use for substitutions when formatting various
                 # strings.
                 fmt_kws: Dict[str, Any] = dict(records=dataId.records)
-                fmt_kws.update(dataId.byName())
+                fmt_kws.update(dataId.full.byName())
                 fmt_kws.update(id=ref.id)
                 fmt_kws.update(record)
                 if dataset_config.obs_id_fmt:
@@ -301,14 +317,27 @@ class ObscoreExporter:
                         _LOG.warning(f"Datastore file does not exist for {ref}")
                 else:
                     if dataset_config.datalink_url_fmt is None:
-                        raise ValueError(f"dataset type {dataset_type_name} doea not define datalink_url_fmt")
+                        raise ValueError(f"dataset type {dataset_type_name} does not define datalink_url_fmt")
                     record["access_url"] = dataset_config.datalink_url_fmt.format(**fmt_kws)
 
                 # add extra columns
+                extra_columns = {}
                 if self.config.extra_columns:
-                    record.update(self.config.extra_columns)
+                    extra_columns.update(self.config.extra_columns)
                 if dataset_config.extra_columns:
-                    record.update(dataset_config.extra_columns)
+                    extra_columns.update(dataset_config.extra_columns)
+                for key, column_value in extra_columns.items():
+                    # Try to expand the template with known keys, if expansion
+                    # fails due to a missing key name then store None.
+                    if isinstance(column_value, Mapping):
+                        try:
+                            value = column_value["template"].format(**fmt_kws)
+                            record[key] = _TYPE_CONVERSION[column_value["type"]](value)
+                        except KeyError:
+                            pass
+                    else:
+                        # Just a static value.
+                        record[key] = column_value
 
                 batch.add_to_batch(record)
                 if batch.size >= batch_size:

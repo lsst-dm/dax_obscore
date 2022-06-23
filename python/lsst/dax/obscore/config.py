@@ -25,7 +25,33 @@ __all__ = ["DatasetTypeConfig", "ExporterConfig"]
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
+
+
+def _validate_extra_columns(extra_columns: Any) -> Any:
+    """Validate ``extra_columns`` contents."""
+    for key, value in extra_columns.items():
+        if isinstance(value, dict):
+            if "template" not in value:
+                raise ValueError(
+                    f"required 'template' attribute is missing from extra_columns {key}: {value}"
+                )
+            unknown_keys = set(value) - {"template", "type"}
+            if unknown_keys:
+                raise ValueError(f"Unexpected attributes in extra_columns: {unknown_keys}; value: {value}")
+            if not isinstance(value["template"], str):
+                raise ValueError(f"'{key}.template' attribute must be a string")
+            # set or check column type
+            if "type" not in value:
+                value["type"] = "str"
+            else:
+                column_type = value["type"]
+                types = {"bool", "int", "float", "str"}
+                if column_type not in types:
+                    raise ValueError(
+                        f"Unexpected '{key}.type' attribute: {column_type}; must be one of {types}"
+                    )
+    return extra_columns
 
 
 class DatasetTypeConfig(BaseModel):
@@ -62,6 +88,11 @@ class DatasetTypeConfig(BaseModel):
 
     extra_columns: Optional[Dict[str, Any]] = None
     """Values for additional columns, optional"""
+
+    @validator("extra_columns")
+    def validate_extra_columns(cls, value: Any) -> Any:  # noqa: N805
+        """If the value is a dict then check the keys and values"""
+        return _validate_extra_columns(value)
 
 
 class ExporterConfig(BaseModel):
@@ -103,3 +134,8 @@ class ExporterConfig(BaseModel):
 
     parquet_compression: str = "snappy"
     """Compression method for parquet files"""
+
+    @validator("extra_columns")
+    def validate_extra_columns(cls, value: Any) -> Any:  # noqa: N805
+        """If the value is a dict then check the keys and values"""
+        return _validate_extra_columns(value)
