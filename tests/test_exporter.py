@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import csv
 import os
 import unittest
 
@@ -50,6 +51,37 @@ class TestCase(unittest.TestCase):
         butler = Butler(Butler.makeRepo(self.root, config=config), writeable=True)
         DatastoreMock.apply(butler)
         return butler
+
+    def make_export_config(self):
+        """Prepare configuration for exporter"""
+        config = ExporterConfig(
+            facility_name="Subaru",
+            obs_collection="obs-collection",
+            collections=["HSC/runs/ci_hsc"],
+            use_butler_uri=False,
+            dataset_types={
+                "_mock_calexp": DatasetTypeConfig(
+                    calib_level=2,
+                    dataproduct_type="image",
+                    dataproduct_subtype="lsst.calexp",
+                    obs_id_fmt="{records[visit].name}",
+                    datalink_url_fmt="http://datalink.org/{obs_id}",
+                ),
+                "_mock_deepCoadd": DatasetTypeConfig(
+                    calib_level=3,
+                    dataproduct_type="image",
+                    dataproduct_subtype="lsst.deepCoadd",
+                    obs_id_fmt="{skymap}-{tract}-{patch}",
+                    datalink_url_fmt="http://datalink.org/{id}",
+                ),
+            },
+            spectral_ranges={
+                "r": [552.0, 691.0],
+                "i": [691.0, 818.0],
+            },
+            extra_columns={"day_obs": {"template": "{records[visit].day_obs}", "type": "int"}},
+        )
+        return config
 
     def test_schema(self):
         """Check how schema is constructed"""
@@ -129,38 +161,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(xprtr.schema.field("target_name").type, pyarrow.string())
         self.assertEqual(xprtr.schema.field("em_xel").type, pyarrow.int16())
 
-    def test_export(self):
-        """Test export method"""
+    def test_export_parquet(self):
+        """Test Parquet export method"""
         butler = self.make_butler()
         butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"))
 
-        config = ExporterConfig(
-            facility_name="Subaru",
-            obs_collection="obs-collection",
-            collections=["HSC/runs/ci_hsc"],
-            use_butler_uri=False,
-            dataset_types={
-                "_mock_calexp": DatasetTypeConfig(
-                    calib_level=2,
-                    dataproduct_type="image",
-                    dataproduct_subtype="lsst.calexp",
-                    obs_id_fmt="{records[visit].name}",
-                    datalink_url_fmt="http://datalink.org/{obs_id}",
-                ),
-                "_mock_deepCoadd": DatasetTypeConfig(
-                    calib_level=3,
-                    dataproduct_type="image",
-                    dataproduct_subtype="lsst.deepCoadd",
-                    obs_id_fmt="{skymap}-{tract}-{patch}",
-                    datalink_url_fmt="http://datalink.org/{id}",
-                ),
-            },
-            spectral_ranges={
-                "r": [552.0, 691.0],
-                "i": [691.0, 818.0],
-            },
-            extra_columns={"day_obs": {"template": "{records[visit].day_obs}", "type": "int"}},
-        )
+        config = self.make_export_config()
         xprtr = ObscoreExporter(butler, config)
         output = os.path.join(self.root, "output.parquet")
         xprtr.to_parquet(output)
@@ -185,6 +191,36 @@ class TestCase(unittest.TestCase):
         self.assertEqual(set(_to_python("day_obs")), {20130617, 20131102, None})
         for value in _to_python("s_region"):
             self.assertTrue(value.startswith("POLYGON "))
+
+    def test_export_csv(self):
+        """Test CSV export method"""
+        butler = self.make_butler()
+        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"))
+
+        # try several options for null_string
+        for null_string in (None, "$NULL", ""):
+
+            config = self.make_export_config()
+            if null_string is not None:
+                config.csv_null_string = null_string
+                expected_null = null_string
+            else:
+                # default is \N
+                expected_null = r"\N"
+
+            xprtr = ObscoreExporter(butler, config)
+            output = os.path.join(self.root, "output.csv")
+            xprtr.to_csv(output)
+
+            # read it back
+            with open(output, newline="") as csvfile:
+                reader = csv.DictReader(csvfile, delimiter=",")
+                for row in reader:
+                    # There should be no empty fields on output but every row
+                    # is supposed to have at leas one \N value.
+                    if expected_null != "":
+                        self.assertFalse("" in row.values())
+                    self.assertIn(expected_null, row.values())
 
 
 if __name__ == "__main__":
