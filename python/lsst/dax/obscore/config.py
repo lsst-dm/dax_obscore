@@ -135,6 +135,9 @@ class ExporterConfig(BaseModel):
     parquet_compression: str = "snappy"
     """Compression method for parquet files"""
 
+    csv_null_string: str = r"\N"
+    """Value to use for NULLs in CSV output."""
+
     @validator("extra_columns")
     def validate_extra_columns(cls, value: Any) -> Any:  # noqa: N805
         """If the value is a dict then check the keys and values"""

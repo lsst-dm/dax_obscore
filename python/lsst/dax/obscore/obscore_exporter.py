@@ -23,6 +23,8 @@ from __future__ import annotations
 
 __all__ = ["ObscoreExporter"]
 
+import contextlib
+import io
 import logging
 from collections.abc import Callable, Mapping
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, cast
@@ -32,7 +34,7 @@ import pyarrow
 from lsst.daf.butler import Butler, DataCoordinate, Dimension, DimensionRecord
 from lsst.sphgeom import ConvexPolygon, LonLat, Region
 from pyarrow import RecordBatch, Schema
-from pyarrow.csv import CSVWriter
+from pyarrow.csv import CSVWriter, WriteOptions
 from pyarrow.parquet import ParquetWriter
 
 from . import DatasetTypeConfig, ExporterConfig
@@ -137,6 +139,69 @@ class _BatchCollector:
         return batch
 
 
+class _CSVFile(io.BufferedWriter):
+    """File object that intercepts output data and does some editing.
+
+    Parameters
+    ----------
+    fname : `str`
+        Name for the output CSV file.
+    null_value : `bytes`
+        Value to insert into empty (NULL) cells.
+    sep_in : `bytes`
+        Field delimiter that appears in input data. Should be selected to be
+        something that never appears in actual filed values, e.g. non-printable
+        ASCII value.
+    sep_out : `bytes`
+        Replacement value for field separator, e.g. comma.
+
+    Notes
+    -----
+    This is a dirty hack to allow writing "\\N" to CSV for NULL values instead
+    of empty cells. Should be removed when "null_string" can be specified in
+    WriteOptions to CSVWriter class.
+    """
+
+    def __init__(self, fname: str, null_value: bytes, sep_in: bytes, sep_out: bytes):
+        rawfile = open(fname, "wb", buffering=0)
+        super().__init__(rawfile)
+        self.null_value = null_value
+        self.sep_in = sep_in
+        self.sep_out = sep_out
+        self.buffer: bytes = b""
+
+    def write(self, buffer: bytes) -> int:  # type: ignore
+        """Write next buffer to output."""
+        self.buffer += buffer
+        self._process_buffer()
+        return len(buffer)
+
+    def _process_buffer(self, final: bool = False) -> None:
+        """Process current buffer contents and write processed data.
+
+        Parameters
+        ----------
+        final : `bool`
+            If True then do not expect any more input data.
+        """
+        # Replace empty fields with <null_value>.
+        while self.buffer:
+            line, sep, remainder = self.buffer.partition(b"\n")
+            if not sep and not final:
+                # no new line, wait for more input
+                break
+            # keep everything after new line for next round
+            self.buffer = remainder
+            # Replace empty cells, and separators
+            line = self.sep_out.join(cell if cell else self.null_value for cell in line.split(self.sep_in))
+            super().write(line + sep)
+
+    def close(self) -> None:
+        """Finalize writing."""
+        self._process_buffer(final=True)
+        super().close()
+
+
 class ObscoreExporter:
     """Class for extracting and exporting of the datasets in ObsCore format.
 
@@ -181,10 +246,14 @@ class ObscoreExporter:
         output : `str`
             Location of the output file.
         """
-
-        with CSVWriter(output, self.schema) as writer:
-            for record_batch in self._make_record_batches(self.config.batch_size):
-                writer.write_batch(record_batch)
+        # Use Unit Separator (US) = 0x1F as field delimiter to avoid potential
+        # issue with commas appearing in actual values.
+        options = WriteOptions(delimiter="\x1f")
+        null_string = self.config.csv_null_string.encode()
+        with contextlib.closing(_CSVFile(output, null_string, sep_in=b"\x1f", sep_out=b",")) as file:
+            with CSVWriter(file, self.schema, write_options=options) as writer:
+                for record_batch in self._make_record_batches(self.config.batch_size):
+                    writer.write_batch(record_batch)
 
     def _make_schema(self, config: ExporterConfig) -> Schema:
         """Create schema definition for output data.
