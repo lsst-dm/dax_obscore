@@ -21,113 +21,20 @@
 
 from __future__ import annotations
 
-__all__ = ["DatasetTypeConfig", "ExporterConfig"]
+__all__ = ["ExporterConfig"]
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional
 
-from pydantic import BaseModel, validator
-
-
-def _validate_extra_columns(extra_columns: Any) -> Any:
-    """Validate ``extra_columns`` contents."""
-    for key, value in extra_columns.items():
-        if isinstance(value, dict):
-            if "template" not in value:
-                raise ValueError(
-                    f"required 'template' attribute is missing from extra_columns {key}: {value}"
-                )
-            unknown_keys = set(value) - {"template", "type"}
-            if unknown_keys:
-                raise ValueError(f"Unexpected attributes in extra_columns: {unknown_keys}; value: {value}")
-            if not isinstance(value["template"], str):
-                raise ValueError(f"'{key}.template' attribute must be a string")
-            # set or check column type
-            if "type" not in value:
-                value["type"] = "str"
-            else:
-                column_type = value["type"]
-                types = {"bool", "int", "float", "str"}
-                if column_type not in types:
-                    raise ValueError(
-                        f"Unexpected '{key}.type' attribute: {column_type}; must be one of {types}"
-                    )
-    return extra_columns
+from lsst.daf.butler.registry.obscore import ObsCoreConfig
 
 
-class DatasetTypeConfig(BaseModel):
-    """Configuration describing dataset type-related options."""
-
-    dataproduct_type: str
-    """Value for the ``dataproduct_type`` column."""
-
-    dataproduct_subtype: Optional[str] = None
-    """Value for the ``dataproduct_subtype`` column, optional."""
-
-    calib_level: int
-    """Value for the ``calib_level`` column."""
-
-    o_ucd: Optional[str] = None
-    """Value for the ``o_ucd`` column, optional."""
-
-    access_format: Optional[str] = None
-    """Value for the ``access_format`` column, optional."""
-
-    obs_id_fmt: Optional[str] = None
-    """Format string for ``obs_id`` column, optional. Uses `str.format`
-    syntax.
-    """
-
-    datalink_url_fmt: Optional[str] = None
-    """Format string for ``access_url`` column for DataLink (when
-    ``use_butler_uri`` is False), optional.
-    """
-
-    obs_collection: Optional[str] = None
-    """Value for the ``obs_collection`` column, if specified it overrides
-    global value in `ExporterConfig`."""
-
-    extra_columns: Optional[Dict[str, Any]] = None
-    """Values for additional columns, optional"""
-
-    @validator("extra_columns")
-    def validate_extra_columns(cls, value: Any) -> Any:  # noqa: N805
-        """If the value is a dict then check the keys and values"""
-        return _validate_extra_columns(value)
-
-
-class ExporterConfig(BaseModel):
+class ExporterConfig(ObsCoreConfig):
     """Complete configuration for ObscoreExporter."""
-
-    collections: Optional[List[str]] = None
-    """Names of registry collections to search, if missing then all collections
-    are used. This value can be overridden with command line options.
-    """
-
-    dataset_types: Dict[str, DatasetTypeConfig]
-    """Per-dataset type configuration, key is the dataset type name."""
 
     where: Optional[str] = None
     """User expression to restrict the output. This value can be overridden
     with command line options.
     """
-
-    obs_collection: Optional[str] = None
-    """Value for the ``obs_collection`` column. This can be overridden in
-    dataset type configuration.
-    """
-
-    facility_name: str
-    """Value for the ``facility_name`` column."""
-
-    extra_columns: Optional[Dict[str, Any]] = None
-    """Values for additional columns, optional."""
-
-    spectral_ranges: Dict[str, Tuple[float, float]] = {}
-    """Maps band name or filter name to a min/max of spectral range."""
-
-    use_butler_uri: bool = True
-    """If true then use Butler URI for ``access_url``, otherwise generate a
-    DataLink URL."""
 
     batch_size: int = 10_000
     """Number of records in a pyarrow RecordBatch"""
@@ -137,8 +44,3 @@ class ExporterConfig(BaseModel):
 
     csv_null_string: str = r"\N"
     """Value to use for NULLs in CSV output."""
-
-    @validator("extra_columns")
-    def validate_extra_columns(cls, value: Any) -> Any:  # noqa: N805
-        """If the value is a dict then check the keys and values"""
-        return _validate_extra_columns(value)
