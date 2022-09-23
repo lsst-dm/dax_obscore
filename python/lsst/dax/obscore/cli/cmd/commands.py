@@ -30,7 +30,7 @@ from lsst.daf.butler.cli.opt import (
     repo_argument,
     where_option,
 )
-from lsst.daf.butler.cli.utils import ButlerCommand, MWPath
+from lsst.daf.butler.cli.utils import ButlerCommand, MWPath, split_commas
 
 from ... import script
 
@@ -69,3 +69,54 @@ from ... import script
 def obscore_export(*args: Any, **kwargs: Any) -> None:
     """Export Butler datasets as ObsCore Data Model in parquet format."""
     script.obscore_export(*args, **kwargs)
+
+
+@click.command(
+    short_help=(
+        "Udpate exposure-related records (e.g. raw) in obscore table that do not have region information "
+        "from matching visit-related records."
+    ),
+    cls=ButlerCommand,
+)
+@repo_argument(required=True)
+@click.option("--check", help="Only print the count of records with missing regions.", is_flag=True)
+@click.option("--dry-run", help="Skip actual update, but execute all other queries.", is_flag=True)
+@click.option(
+    "--dataproduct-type",
+    help="Dataproduct type for exposure records. Default: image",
+    default="image",
+)
+@click.option(
+    "--dataproduct-subtype",
+    help="Dataproduct subtype for exposure records. Default: lsst.raw",
+    default="lsst.raw",
+)
+@click.option(
+    "--instrument",
+    help="If provided then updates are limited to that specific instrument.",
+)
+@click.option(
+    "--exposure-column",
+    help="Name of the column in obscore table containing exposure ID. Default: lsst_exposure",
+    default="lsst_exposure",
+)
+@click.option(
+    "--detector-column",
+    help="Name of the column in obscore table containing detector ID. Default: lsst_detector",
+    default="lsst_detector",
+)
+@click.option(
+    "--region-columns",
+    help=(
+        "Comma-separated list of columns that need to be updated if they are set to NULL. "
+        "Default: s_region,s_ra,s_dec,s_fov"
+    ),
+    multiple=True,
+    callback=split_commas,
+    default=("s_region", "s_ra", "s_dec", "s_fov"),
+)
+def obscore_set_exposure_regions(*args: Any, **kwargs: Any) -> None:
+    """Update exposure-related records (e.g. raw) in obscore table that do not
+    have region information from matching visit-related records.
+    """
+    script.obscore_set_exposure_regions(*args, **kwargs)

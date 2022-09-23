@@ -20,3 +20,4 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .obscore_export import obscore_export
+from .obscore_set_exposure_regions import obscore_set_exposure_regions
