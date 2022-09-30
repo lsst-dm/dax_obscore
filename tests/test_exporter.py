@@ -26,10 +26,11 @@ import unittest
 import pyarrow
 import pyarrow.parquet
 from lsst.daf.butler import Butler, Config
+from lsst.daf.butler.registry.obscore import DatasetTypeConfig
+from lsst.daf.butler.registry.obscore._schema import _STATIC_COLUMNS
 from lsst.daf.butler.tests import DatastoreMock
 from lsst.daf.butler.tests.utils import makeTestTempDir, removeTestTempDir
-from lsst.dax.obscore import DatasetTypeConfig, ExporterConfig, ObscoreExporter
-from lsst.dax.obscore.obscore_exporter import _STATIC_SCHEMA
+from lsst.dax.obscore import ExporterConfig, ObscoreExporter
 
 TESTDIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -55,6 +56,7 @@ class TestCase(unittest.TestCase):
     def make_export_config(self):
         """Prepare configuration for exporter"""
         config = ExporterConfig(
+            version=0,
             facility_name="Subaru",
             obs_collection="obs-collection",
             collections=["HSC/runs/ci_hsc"],
@@ -86,14 +88,15 @@ class TestCase(unittest.TestCase):
     def test_schema(self):
         """Check how schema is constructed"""
 
-        butler = None
+        butler = self.make_butler()
 
-        config = ExporterConfig(obs_collection="", dataset_types=[], facility_name="FACILITY")
+        config = ExporterConfig(version=0, obs_collection="", dataset_types=[], facility_name="FACILITY")
         xprtr = ObscoreExporter(butler, config)
-        self.assertEqual(xprtr.schema.names, [col[0] for col in _STATIC_SCHEMA])
+        self.assertEqual(xprtr.schema.names, [col.name for col in _STATIC_COLUMNS])
 
         # extra columns from top-level config
         config = ExporterConfig(
+            version=0,
             obs_collection="",
             extra_columns={"c1": 1, "c2": "string", "c3": {"template": "{calib_level}", "type": "float"}},
             dataset_types=[],
@@ -102,7 +105,7 @@ class TestCase(unittest.TestCase):
         xprtr = ObscoreExporter(butler, config)
         self.assertEqual(
             xprtr.schema.names,
-            [col[0] for col in _STATIC_SCHEMA] + ["c1", "c2", "c3"],
+            [col.name for col in _STATIC_COLUMNS] + ["c1", "c2", "c3"],
         )
         self.assertEqual(xprtr.schema.field("c1").type, pyarrow.int64())
         self.assertEqual(xprtr.schema.field("c2").type, pyarrow.string())
@@ -110,6 +113,7 @@ class TestCase(unittest.TestCase):
 
         # extra columns from per-dataset type configs
         config = ExporterConfig(
+            version=0,
             obs_collection="",
             extra_columns={"c1": 1},
             dataset_types={
@@ -130,7 +134,7 @@ class TestCase(unittest.TestCase):
         xprtr = ObscoreExporter(butler, config)
         self.assertEqual(
             xprtr.schema.names,
-            [col[0] for col in _STATIC_SCHEMA] + ["c1", "c2", "c3"],
+            [col.name for col in _STATIC_COLUMNS] + ["c1", "c2", "c3"],
         )
         self.assertEqual(xprtr.schema.field("c1").type, pyarrow.int64())
         self.assertEqual(xprtr.schema.field("c2").type, pyarrow.string())
@@ -139,6 +143,7 @@ class TestCase(unittest.TestCase):
         # Columns with the same names as in static list in configs, types
         # are not overriden.
         config = ExporterConfig(
+            version=0,
             obs_collection="",
             extra_columns={"t_xel": 1e10},
             dataset_types={
@@ -156,10 +161,10 @@ class TestCase(unittest.TestCase):
             facility_name="FACILITY",
         )
         xprtr = ObscoreExporter(butler, config)
-        self.assertEqual(xprtr.schema.names, [col[0] for col in _STATIC_SCHEMA])
-        self.assertEqual(xprtr.schema.field("t_xel").type, pyarrow.int16())
+        self.assertEqual(xprtr.schema.names, [col.name for col in _STATIC_COLUMNS])
+        self.assertEqual(xprtr.schema.field("t_xel").type, pyarrow.int32())
         self.assertEqual(xprtr.schema.field("target_name").type, pyarrow.string())
-        self.assertEqual(xprtr.schema.field("em_xel").type, pyarrow.int16())
+        self.assertEqual(xprtr.schema.field("em_xel").type, pyarrow.int32())
 
     def test_export_parquet(self):
         """Test Parquet export method"""
