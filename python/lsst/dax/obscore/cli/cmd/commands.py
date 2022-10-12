@@ -108,7 +108,7 @@ def obscore_export(*args: Any, **kwargs: Any) -> None:
 @click.option(
     "--region-columns",
     help=(
-        "Comma-separated list of columns that need to be updated if they are set to NULL. "
+        "Comma-separated list of columns that all have to be NULL for updating the record. "
         "Default: s_region,s_ra,s_dec,s_fov"
     ),
     multiple=True,

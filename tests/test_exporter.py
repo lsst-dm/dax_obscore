@@ -34,6 +34,9 @@ from lsst.dax.obscore import ExporterConfig, ObscoreExporter
 
 TESTDIR = os.path.abspath(os.path.dirname(__file__))
 
+# List of standard column names, some are added by a default plugin
+_STANDARD_COLUMNS = tuple(col.name for col in _STATIC_COLUMNS) + ("s_dec", "s_ra", "s_fov", "s_region")
+
 
 class TestCase(unittest.TestCase):
     """Tests of ObscoreExporter"""
@@ -92,7 +95,7 @@ class TestCase(unittest.TestCase):
 
         config = ExporterConfig(version=0, obs_collection="", dataset_types=[], facility_name="FACILITY")
         xprtr = ObscoreExporter(butler, config)
-        self.assertEqual(xprtr.schema.names, [col.name for col in _STATIC_COLUMNS])
+        self.assertCountEqual(xprtr.schema.names, _STANDARD_COLUMNS)
 
         # extra columns from top-level config
         config = ExporterConfig(
@@ -103,10 +106,7 @@ class TestCase(unittest.TestCase):
             facility_name="FACILITY",
         )
         xprtr = ObscoreExporter(butler, config)
-        self.assertEqual(
-            xprtr.schema.names,
-            [col.name for col in _STATIC_COLUMNS] + ["c1", "c2", "c3"],
-        )
+        self.assertCountEqual(xprtr.schema.names, _STANDARD_COLUMNS + ("c1", "c2", "c3"))
         self.assertEqual(xprtr.schema.field("c1").type, pyarrow.int64())
         self.assertEqual(xprtr.schema.field("c2").type, pyarrow.string())
         self.assertEqual(xprtr.schema.field("c3").type, pyarrow.float64())
@@ -132,10 +132,7 @@ class TestCase(unittest.TestCase):
             facility_name="FACILITY",
         )
         xprtr = ObscoreExporter(butler, config)
-        self.assertEqual(
-            xprtr.schema.names,
-            [col.name for col in _STATIC_COLUMNS] + ["c1", "c2", "c3"],
-        )
+        self.assertCountEqual(xprtr.schema.names, _STANDARD_COLUMNS + ("c1", "c2", "c3"))
         self.assertEqual(xprtr.schema.field("c1").type, pyarrow.int64())
         self.assertEqual(xprtr.schema.field("c2").type, pyarrow.string())
         self.assertEqual(xprtr.schema.field("c3").type, pyarrow.float64())
@@ -161,7 +158,7 @@ class TestCase(unittest.TestCase):
             facility_name="FACILITY",
         )
         xprtr = ObscoreExporter(butler, config)
-        self.assertEqual(xprtr.schema.names, [col.name for col in _STATIC_COLUMNS])
+        self.assertCountEqual(xprtr.schema.names, _STANDARD_COLUMNS)
         self.assertEqual(xprtr.schema.field("t_xel").type, pyarrow.int32())
         self.assertEqual(xprtr.schema.field("target_name").type, pyarrow.string())
         self.assertEqual(xprtr.schema.field("em_xel").type, pyarrow.int32())

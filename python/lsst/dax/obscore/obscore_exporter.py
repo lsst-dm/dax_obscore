@@ -31,7 +31,12 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, cast
 import pyarrow
 import sqlalchemy
 from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, ddl
-from lsst.daf.butler.registry.obscore import ExposureRegionFactory, ObsCoreSchema, RecordFactory
+from lsst.daf.butler.registry.obscore import (
+    ExposureRegionFactory,
+    ObsCoreSchema,
+    RecordFactory,
+    SpatialObsCorePlugin,
+)
 from lsst.sphgeom import Region
 from pyarrow import RecordBatch, Schema
 from pyarrow.csv import CSVWriter, WriteOptions
@@ -245,11 +250,17 @@ class ObscoreExporter:
         self.butler = butler
         self.config = config
 
-        schema = ObsCoreSchema(config=config)
+        # Build schema for a table from ObsCoreSchema and plugins.
+        spatial_plugins = SpatialObsCorePlugin.load_plugins(config.spatial_plugins, None)
+        schema = ObsCoreSchema(config=config, spatial_plugins=spatial_plugins)
+
         self.schema = self._make_schema(schema.table_spec)
+
         exposure_region_factory = _ExposureRegionFactory(self.butler.registry)
         universe = self.butler.dimensions
-        self.record_factory = RecordFactory(config, schema, universe, exposure_region_factory)
+        self.record_factory = RecordFactory(
+            config, schema, universe, spatial_plugins, exposure_region_factory
+        )
 
     def to_parquet(self, output: str) -> None:
         """Export Butler datasets as ObsCore Data Model in parquet format.
@@ -316,6 +327,7 @@ class ObscoreExporter:
             collections = ...
 
         registry = self.butler.registry
+        extra_warning = True
         for dataset_type_name in self.config.dataset_types:
 
             _LOG.debug("Reading data for dataset %s", dataset_type_name)
@@ -330,9 +342,12 @@ class ObscoreExporter:
                 _LOG.debug("New record, dataId=%s", dataId.full)
                 # _LOG.debug("New record, records=%s", dataId.records)
 
-                record = self.record_factory(ref)
+                record, extra_records = self.record_factory(ref)
                 if record is None:
                     continue
+                if extra_records and extra_warning:
+                    _LOG.warning("Unexpected extra records returned by spatial plugins, will be ignored")
+                    extra_warning = False
 
                 count += 1
 
