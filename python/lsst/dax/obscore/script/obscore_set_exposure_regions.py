@@ -22,7 +22,6 @@
 __all__ = ["obscore_set_exposure_regions"]
 
 import logging
-from collections import defaultdict
 from collections.abc import Collection
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -160,7 +159,6 @@ def obscore_set_exposure_regions(
             exposure_to_visit[(instrument, exposure)] = record.visit
 
     update_rows: List[Dict[str, Any]] = []
-    extra_plugin_records: Dict[sqlalchemy.schema.Table, List[Record]] = defaultdict(list)
     for dataset_id, instrument, exposure, detector in missing_records:
         # Find a region for every visit+detector
         visit = exposure_to_visit.get((instrument, exposure))
@@ -174,12 +172,9 @@ def obscore_set_exposure_regions(
 
                 # ask each plugin for its values to add to a record.
                 for plugin in obscore_mgr.spatial_plugins:
-                    plugin_record, extra_records = plugin.make_records(dataset_id, record.region)
+                    plugin_record = plugin.make_records(dataset_id, record.region)
                     if plugin_record is not None:
                         region_data.update(plugin_record)
-                    if extra_records is not None:
-                        for table, table_records in extra_records.items():
-                            extra_plugin_records[table].extend(table_records)
 
                 region_data["dataset_id_column"] = dataset_id
                 update_rows.append(region_data)
@@ -195,10 +190,6 @@ def obscore_set_exposure_regions(
     if not dry_run:
         count = db.update(obscore_table, where_dict, *update_rows)
         _LOG.info("Updated %s obscore records.", count)
-
-        for table, table_records in extra_plugin_records.items():
-            count = db.ensure(table, *table_records, primary_key_only=True)
-            _LOG.info("Inserted %s records into spatial plugin table %s", count, table.name)
 
         # Re-check number of records remaining.
         count = _count_missing()

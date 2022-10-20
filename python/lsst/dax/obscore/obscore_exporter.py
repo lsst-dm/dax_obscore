@@ -327,7 +327,6 @@ class ObscoreExporter:
             collections = ...
 
         registry = self.butler.registry
-        extra_warning = True
         for dataset_type_name in self.config.dataset_types:
 
             _LOG.debug("Reading data for dataset %s", dataset_type_name)
@@ -342,12 +341,9 @@ class ObscoreExporter:
                 _LOG.debug("New record, dataId=%s", dataId.full)
                 # _LOG.debug("New record, records=%s", dataId.records)
 
-                record, extra_records = self.record_factory(ref)
+                record = self.record_factory(ref)
                 if record is None:
                     continue
-                if extra_records and extra_warning:
-                    _LOG.warning("Unexpected extra records returned by spatial plugins, will be ignored")
-                    extra_warning = False
 
                 count += 1
 
