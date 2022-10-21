@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import sqlalchemy
 from lsst.daf.butler import Butler, DatasetId
 from lsst.daf.butler.registries.sql import SqlRegistry
-from lsst.daf.butler.registry.obscore import ObsCoreLiveTableManager, RecordFactory
+from lsst.daf.butler.registry.obscore import ObsCoreLiveTableManager, Record
 
 _LOG = logging.getLogger(__name__)
 
@@ -168,16 +168,16 @@ def obscore_set_exposure_regions(
             )
             record = next(iter(records), None)
             if record is not None:
-                region_data: Dict[str, Any] = {}
-                RecordFactory.region_to_columns(record.region, region_data)
+                region_data: Record = {}
 
-                # Only use those columns that were given explicitly (and
-                # crash if those columns are not valid).
-                row: Dict[str, Any] = {}
-                for column in region_columns:
-                    row[column] = region_data[column]
-                row["dataset_id_column"] = dataset_id
-                update_rows.append(row)
+                # ask each plugin for its values to add to a record.
+                for plugin in obscore_mgr.spatial_plugins:
+                    plugin_record = plugin.make_records(dataset_id, record.region)
+                    if plugin_record is not None:
+                        region_data.update(plugin_record)
+
+                region_data["dataset_id_column"] = dataset_id
+                update_rows.append(region_data)
                 _LOG.debug("exposure=%s detector=%s region=%s", exposure, detector, record.region)
 
     # Build dictionaries for update() method. DatasetID is the primary key
@@ -189,7 +189,7 @@ def obscore_set_exposure_regions(
     # Run update query
     if not dry_run:
         count = db.update(obscore_table, where_dict, *update_rows)
-        _LOG.info("Updated %s obscore records for instrument %s", count, instrument)
+        _LOG.info("Updated %s obscore records.", count)
 
         # Re-check number of records remaining.
         count = _count_missing()
