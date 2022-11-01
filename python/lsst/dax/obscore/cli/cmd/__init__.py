@@ -21,4 +21,4 @@
 
 __all__ = ["obscore_export", "obscore_set_exposure_regions"]
 
-from .commands import obscore_export, obscore_set_exposure_regions
+from .commands import obscore_export, obscore_set_exposure_regions, obscore_update_table

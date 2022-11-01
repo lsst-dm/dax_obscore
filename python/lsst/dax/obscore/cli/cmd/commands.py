@@ -120,3 +120,19 @@ def obscore_set_exposure_regions(*args: Any, **kwargs: Any) -> None:
     have region information from matching visit-related records.
     """
     script.obscore_set_exposure_regions(*args, **kwargs)
+
+
+@click.command(
+    short_help=(
+        "Update obscore table with the records that are missing, typically "
+        "used after adding obscore support to existing repository."
+    ),
+    cls=ButlerCommand,
+)
+@repo_argument(required=True)
+@click.option("--dry-run", help="Skip actual update, but execute all other queries.", is_flag=True)
+def obscore_update_table(*args: Any, **kwargs: Any) -> None:
+    """Update obscore table with the records that are missing, typically
+    used after adding obscore support to existing repository.
+    """
+    script.obscore_update_table(*args, **kwargs)

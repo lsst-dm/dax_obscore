@@ -3,3 +3,4 @@ cmd:
   commands:
     - obscore-export
     - obscore-set-exposure-regions
+    - obscore-update-table
