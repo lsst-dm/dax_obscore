@@ -35,7 +35,13 @@ from lsst.daf.butler.cli.utils import ButlerCommand, MWPath, split_commas
 from ... import script
 
 
-@click.command(
+@click.group(short_help="Commands to export or update obscore data.")
+def obscore() -> None:
+    """Set of commands to deal with obscore data."""
+    pass
+
+
+@obscore.command(
     short_help="Export Butler datasets as ObsCore Data Model",
     cls=ButlerCommand,
 )
@@ -66,12 +72,12 @@ from ... import script
 @collections_option()
 @where_option()
 @options_file_option()
-def obscore_export(*args: Any, **kwargs: Any) -> None:
+def export(*args: Any, **kwargs: Any) -> None:
     """Export Butler datasets as ObsCore Data Model in parquet format."""
     script.obscore_export(*args, **kwargs)
 
 
-@click.command(
+@obscore.command(
     short_help=(
         "Udpate exposure-related records (e.g. raw) in obscore table that do not have region information "
         "from matching visit-related records."
@@ -115,14 +121,14 @@ def obscore_export(*args: Any, **kwargs: Any) -> None:
     callback=split_commas,
     default=("s_region", "s_ra", "s_dec", "s_fov"),
 )
-def obscore_set_exposure_regions(*args: Any, **kwargs: Any) -> None:
+def set_exposure_regions(*args: Any, **kwargs: Any) -> None:
     """Update exposure-related records (e.g. raw) in obscore table that do not
     have region information from matching visit-related records.
     """
     script.obscore_set_exposure_regions(*args, **kwargs)
 
 
-@click.command(
+@obscore.command(
     short_help=(
         "Update obscore table with the records that are missing, typically "
         "used after adding obscore support to existing repository."
@@ -131,7 +137,7 @@ def obscore_set_exposure_regions(*args: Any, **kwargs: Any) -> None:
 )
 @repo_argument(required=True)
 @click.option("--dry-run", help="Skip actual update, but execute all other queries.", is_flag=True)
-def obscore_update_table(*args: Any, **kwargs: Any) -> None:
+def update_table(*args: Any, **kwargs: Any) -> None:
     """Update obscore table with the records that are missing, typically
     used after adding obscore support to existing repository.
     """
