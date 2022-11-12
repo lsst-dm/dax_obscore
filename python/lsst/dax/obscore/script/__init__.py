@@ -21,3 +21,4 @@
 
 from .obscore_export import obscore_export
 from .obscore_set_exposure_regions import obscore_set_exposure_regions
+from .obscore_update_table import obscore_update_table

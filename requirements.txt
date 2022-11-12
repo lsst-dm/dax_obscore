@@ -3,4 +3,4 @@ pyarrow
 pyyaml
 pydantic
 git+https://github.com/lsst/sphgeom@main#egg=lsst-sphgeom
-git+https://github.com/lsst/daf_butler@main#egg=lsst-daf-butler
+git+https://github.com/lsst/daf_butler@tickets/DM-36766#egg=lsst-daf-butler
