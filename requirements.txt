@@ -2,6 +2,7 @@ click
 pyarrow
 pyyaml
 pydantic
+sqlalchemy >= 1.4, < 2
 git+https://github.com/lsst/sphgeom@main#egg=lsst-sphgeom
 git+https://github.com/lsst/daf_relation@main#egg=lsst-daf-relation
 git+https://github.com/lsst/daf_butler@main#egg=lsst-daf-butler
