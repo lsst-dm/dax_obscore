@@ -3,4 +3,6 @@ pyarrow
 pyyaml
 pydantic
 git+https://github.com/lsst/sphgeom@main#egg=lsst-sphgeom
+git+https://github.com/lsst/daf_relation@main#egg=lsst-daf-relation
 git+https://github.com/lsst/daf_butler@main#egg=lsst-daf-butler
+git+https://github.com/lsst/utils@main#egg=lsst-utils
