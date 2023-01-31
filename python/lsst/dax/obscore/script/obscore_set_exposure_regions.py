@@ -115,8 +115,8 @@ def obscore_set_exposure_regions(
     def _count_missing() -> int:
         """Return count of records with missing region data."""
         query = sqlalchemy.select(sqlalchemy.func.count()).select_from(obscore_table).where(missing_where)
-        result = db.query(query)
-        return result.scalar()
+        with db.query(query) as result:
+            return result.scalar_one()
 
     if check:
         # Just print count and stop here.

@@ -26,23 +26,28 @@ __all__ = ["ObscoreExporter"]
 import contextlib
 import io
 import logging
-from typing import Any, Dict, Iterator, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, cast
 
 import pyarrow
 import sqlalchemy
 from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, ddl
+from lsst.daf.butler.registries.sql import SqlRegistry
 from lsst.daf.butler.registry.obscore import (
     ExposureRegionFactory,
     ObsCoreSchema,
     RecordFactory,
     SpatialObsCorePlugin,
 )
+from lsst.daf.butler.registry.queries import SqlQueryBackend
 from lsst.sphgeom import Region
 from pyarrow import RecordBatch, Schema
 from pyarrow.csv import CSVWriter, WriteOptions
 from pyarrow.parquet import ParquetWriter
 
 from . import ExporterConfig
+
+if TYPE_CHECKING:
+    from lsst.daf.butler.registry.queries import SqlQueryContext
 
 _LOG = logging.getLogger(__name__)
 
@@ -175,7 +180,7 @@ class _ExposureRegionFactory(ExposureRegionFactory):
         # Maps instrument and exposure ID to a visit ID
         self._exposure_to_visit: Dict[str, Dict[int, int]] = {}
 
-    def exposure_region(self, dataId: DataCoordinate) -> Optional[Region]:
+    def exposure_region(self, dataId: DataCoordinate, context: SqlQueryContext) -> Optional[Region]:
         # Docstring is inherited from a base class.
         registry = self.registry
         instrument = cast(str, dataId["instrument"])
@@ -327,6 +332,10 @@ class ObscoreExporter:
             collections = ...
 
         registry = self.butler.registry
+        assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
+        backend = SqlQueryBackend(registry._db, registry._managers)
+
+        context = backend.context()
         for dataset_type_name in self.config.dataset_types:
 
             _LOG.debug("Reading data for dataset %s", dataset_type_name)
@@ -341,7 +350,7 @@ class ObscoreExporter:
                 _LOG.debug("New record, dataId=%s", dataId.full)
                 # _LOG.debug("New record, records=%s", dataId.records)
 
-                record = self.record_factory(ref)
+                record = self.record_factory(ref, context)
                 if record is None:
                     continue
 

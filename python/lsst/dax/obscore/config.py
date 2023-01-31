@@ -23,15 +23,13 @@ from __future__ import annotations
 
 __all__ = ["ExporterConfig"]
 
-from typing import Optional
-
 from lsst.daf.butler.registry.obscore import ObsCoreConfig
 
 
 class ExporterConfig(ObsCoreConfig):
     """Complete configuration for ObscoreExporter."""
 
-    where: Optional[str] = None
+    where: str = ""
     """User expression to restrict the output. This value can be overridden
     with command line options.
     """
