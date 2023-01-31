@@ -80,7 +80,7 @@ indices:
 spectral_ranges:
   # This list includes every band defined now in registry, actual values for some
   # of them are probably very approximate. Keys in this section could be a band
-  # name of a physical filter name
+  # name or a physical filter name
   "u": [330.0e-9, 400.0e-9]
   "u~nd": [330.0e-9, 400.0e-9]
   "g": [402.0e-9, 552.0e-9]
