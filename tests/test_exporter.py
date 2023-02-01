@@ -201,7 +201,6 @@ class TestCase(unittest.TestCase):
 
         # try several options for null_string
         for null_string in (None, "$NULL", ""):
-
             config = self.make_export_config()
             if null_string is not None:
                 config.csv_null_string = null_string

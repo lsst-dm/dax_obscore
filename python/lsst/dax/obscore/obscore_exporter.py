@@ -205,10 +205,9 @@ class _ExposureRegionFactory(ExposureRegionFactory):
         universe = self.universe
         detector_dimension = cast(Dimension, universe["detector"])
         if detector_dimension in dataId:
-
             visit_detector_regions = self._visit_detector_regions.get(instrument)
-            if visit_detector_regions is None:
 
+            if visit_detector_regions is None:
                 self._visit_detector_regions[instrument] = visit_detector_regions = {}
 
                 # Read all visits, there is a chance we need most of them
@@ -223,10 +222,9 @@ class _ExposureRegionFactory(ExposureRegionFactory):
             return visit_detector_regions.get((visit, detector))
 
         else:
-
             visit_regions = self._visit_regions.get(instrument)
-            if visit_regions is None:
 
+            if visit_regions is None:
                 self._visit_regions[instrument] = visit_regions = {}
 
                 # Read all visits, there is a chance we need most of them
@@ -337,7 +335,6 @@ class ObscoreExporter:
 
         context = backend.context()
         for dataset_type_name in self.config.dataset_types:
-
             _LOG.debug("Reading data for dataset %s", dataset_type_name)
             refs = registry.queryDatasets(dataset_type_name, collections=collections, where=self.config.where)
 
@@ -345,7 +342,6 @@ class ObscoreExporter:
             refs = refs.expanded()
             count = 0
             for ref in refs:
-
                 dataId = ref.dataId
                 _LOG.debug("New record, dataId=%s", dataId.full)
                 # _LOG.debug("New record, records=%s", dataId.records)

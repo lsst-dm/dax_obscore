@@ -150,7 +150,6 @@ def obscore_set_exposure_regions(
     # Build a mapping from exposure to visit
     exposure_to_visit: Dict[Tuple[str, int], int] = {}
     for instrument, exposure in exposures:
-
         # Find visit record, there may be many visits per exposure, but
         # they all should define the same region, we take any one of them.
         records = registry.queryDimensionRecords("visit_definition", instrument=instrument, exposure=exposure)
