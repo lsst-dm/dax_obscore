@@ -22,13 +22,16 @@
 __all__ = ["obscore_set_exposure_regions"]
 
 import logging
-from collections.abc import Collection
-from typing import Any, Dict, List, Optional, Tuple
+from collections import defaultdict
+from collections.abc import Collection, MutableMapping
+from typing import Any
 
 import sqlalchemy
 from lsst.daf.butler import Butler, DatasetId
 from lsst.daf.butler.registries.sql import SqlRegistry
 from lsst.daf.butler.registry.obscore import ObsCoreLiveTableManager, Record
+from lsst.sphgeom import Region
+from lsst.utils.iteration import chunk_iterable
 
 _LOG = logging.getLogger(__name__)
 
@@ -39,7 +42,7 @@ def obscore_set_exposure_regions(
     dry_run: bool,
     dataproduct_type: str,
     dataproduct_subtype: str,
-    instrument: Optional[str],
+    instrument: str | None,
     exposure_column: str,
     detector_column: str,
     region_columns: Collection[str],
@@ -134,60 +137,88 @@ def obscore_set_exposure_regions(
         obscore_table.columns[exposure_column],
         obscore_table.columns[detector_column],
     )
-    query = sqlalchemy.select(*columns).select_from(obscore_table).where(missing_where)
-    result = db.query(query)
-
     # Make a list of (DatasetId, instrument, exposure, detector) for matching
-    # records
-    missing_records: List[Tuple[DatasetId, str, int, int]] = [tuple(row) for row in result]  # type: ignore
-    exposures = set((row[1], row[2]) for row in missing_records)
+    # records.
+    missing_records: list[tuple[DatasetId, str, int, int]]
+    query = sqlalchemy.select(*columns).select_from(obscore_table).where(missing_where)
+    with db.query(query) as result:
+        missing_records = [tuple(row) for row in result]  # type: ignore
+
+    instrument_exposures: MutableMapping[str, set[int]] = defaultdict(set)
+    for _, instrument, exposure, _ in missing_records:
+        instrument_exposures[instrument].add(exposure)
+    n_unique_exposures = sum(len(exp_set) for exp_set in instrument_exposures.values())
     _LOG.info(
-        "Found %d records (%d unique exposures) with missing regions", len(missing_records), len(exposures)
+        "Found %d records (%d unique exposures) with missing regions",
+        len(missing_records),
+        n_unique_exposures,
     )
     if not missing_records:
         return
 
-    # Build a mapping from exposure to visit
-    exposure_to_visit: Dict[Tuple[str, int], int] = {}
-    for instrument, exposure in exposures:
+    # Build a mapping from instrument+exposure to visit.
+    exposure_to_visit: dict[tuple[str, int], int] = {}
+    instrument_visits: MutableMapping[str, set[int]] = defaultdict(set)
+    for instrument, exposures in instrument_exposures.items():
         # Find visit record, there may be many visits per exposure, but
         # they all should define the same region, we take any one of them.
-        records = registry.queryDimensionRecords("visit_definition", instrument=instrument, exposure=exposure)
-        record = next(iter(records), None)
-        if record is not None:
-            exposure_to_visit[(instrument, exposure)] = record.visit
+        for exp_chunk in chunk_iterable(sorted(exposures)):
+            records = registry.queryDimensionRecords(
+                "visit_definition",
+                where="exposure IN (exposures_param)",
+                instrument=instrument,
+                bind={"exposures_param": tuple(exp_chunk)},
+            )
+            for rec in records:
+                _LOG.debug("visit_definition record=%s", rec)
+                exposure_to_visit[(instrument, rec.exposure)] = rec.visit
+                instrument_visits[instrument].add(rec.visit)
 
-    update_rows: List[Dict[str, Any]] = []
+    # Build a mapping from a instrument+visit+detector to region
+    visit_detector_region: dict[tuple[str, int, int], Region] = {}
+    for instrument, visits in instrument_visits.items():
+        for visit_chunk in chunk_iterable(sorted(visits)):
+            records = registry.queryDimensionRecords(
+                "visit_detector_region",
+                where="visit IN (visits_param)",
+                instrument=instrument,
+                bind={"visits_param": tuple(visit_chunk)},
+            )
+            for rec in records:
+                _LOG.debug("visit_detector_region record=%s", rec)
+                visit_detector_region[(instrument, rec.visit, rec.detector)] = rec.region
+
+    # Build dictionaries for update() method. DatasetID is the primary key in
+    # obscore table, so it is sufficient to identify a record.
+    update_rows: list[dict[str, Any]] = []
     for dataset_id, instrument, exposure, detector in missing_records:
         # Find a region for every visit+detector
         visit = exposure_to_visit.get((instrument, exposure))
         if visit is not None:
-            records = registry.queryDimensionRecords(
-                "visit_detector_region", instrument=instrument, visit=visit, detector=detector
-            )
-            record = next(iter(records), None)
-            if record is not None:
+            region = visit_detector_region.get((instrument, visit, detector))
+            if region is not None:
                 region_data: Record = {}
 
                 # ask each plugin for its values to add to a record.
                 for plugin in obscore_mgr.spatial_plugins:
-                    plugin_record = plugin.make_records(dataset_id, record.region)
+                    plugin_record = plugin.make_records(dataset_id, region)
                     if plugin_record is not None:
                         region_data.update(plugin_record)
 
                 region_data["dataset_id_column"] = dataset_id
                 update_rows.append(region_data)
-                _LOG.debug("exposure=%s detector=%s region=%s", exposure, detector, record.region)
+                _LOG.debug("exposure=%s detector=%s region=%s", exposure, detector, region)
 
-    # Build dictionaries for update() method. DatasetID is the primary key
-    # in obscore table, so it is sufficient to identify a record.
-    where_dict: Dict[str, Any] = {
-        dataset_id_column: "dataset_id_column",
-    }
+    _LOG.info("%d exposure records will be updated", len(update_rows))
+    if not dry_run and update_rows:
+        # Run update query
+        where_dict: dict[str, Any] = {
+            dataset_id_column: "dataset_id_column",
+        }
 
-    # Run update query
-    if not dry_run:
-        count = db.update(obscore_table, where_dict, *update_rows)
+        count = 0
+        for rows_chunk in chunk_iterable(update_rows):
+            count += db.update(obscore_table, where_dict, *rows_chunk)
         _LOG.info("Updated %s obscore records.", count)
 
         # Re-check number of records remaining.
