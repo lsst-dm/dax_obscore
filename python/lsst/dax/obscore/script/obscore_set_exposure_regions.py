@@ -27,9 +27,7 @@ from collections.abc import Collection, MutableMapping
 from typing import Any
 
 import sqlalchemy
-from lsst.daf.butler import Butler, DatasetId
-from lsst.daf.butler.registries.sql import SqlRegistry
-from lsst.daf.butler.registry.obscore import ObsCoreLiveTableManager, Record
+from lsst.daf.butler import Butler
 from lsst.sphgeom import Region
 from lsst.utils.iteration import chunk_iterable
 
@@ -89,36 +87,23 @@ def obscore_set_exposure_regions(
 
     butler = Butler(repo, writeable=True)
 
-    # There are no client API for updating obscore table, so we are going to
-    # mess with the table contents directly. For that we need to have an access
-    # to the internals of the Registry and obscore manager.
-
     registry = butler.registry
-    assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
-
-    db = registry._db
-    obscore_mgr = registry._managers.obscore
-    if obscore_mgr is None:
+    if registry.obsCoreTableManager is None:
         raise ValueError(f"Repository {repo} does not have obscore table.")
-    assert isinstance(obscore_mgr, ObsCoreLiveTableManager), "Expect ObsCoreLiveTableManager type"
+    obscore_mgr = registry.obsCoreTableManager
 
-    obscore_table = obscore_mgr.table
-    assert obscore_mgr.schema.dataset_fk is not None, "Live obscore table must have foreign key"
-    dataset_id_column: str = obscore_mgr.schema.dataset_fk.name
-
-    # WHERE expressions for finding all records with missing region data.
-    missing_where = sqlalchemy.and_(
-        obscore_table.columns["dataproduct_type"] == dataproduct_type,
-        obscore_table.columns["dataproduct_subtype"] == dataproduct_subtype,
-        *(obscore_table.columns[column].is_(None) for column in region_columns),
-    )
+    query_args: dict[str, Any] = {
+        "dataproduct_type": dataproduct_type,
+        "dataproduct_subtype": dataproduct_subtype,
+    }
+    for column in region_columns:
+        query_args[column] = None
     if instrument:
-        missing_where = sqlalchemy.and_(obscore_table.columns["instrument_name"] == instrument, missing_where)
+        query_args["instrument_name"] = instrument
 
     def _count_missing() -> int:
         """Return count of records with missing region data."""
-        query = sqlalchemy.select(sqlalchemy.func.count()).select_from(obscore_table).where(missing_where)
-        with db.query(query) as result:
+        with obscore_mgr.query([sqlalchemy.sql.functions.count()], **query_args) as result:
             return result.scalar_one()
 
     if check:
@@ -131,21 +116,14 @@ def obscore_set_exposure_regions(
 
     # Select all exposures with missing regions with all detectors for that
     # exposure.
-    columns = (
-        obscore_table.columns[dataset_id_column],
-        obscore_table.columns["instrument_name"],
-        obscore_table.columns[exposure_column],
-        obscore_table.columns[detector_column],
-    )
-    # Make a list of (DatasetId, instrument, exposure, detector) for matching
-    # records.
-    missing_records: list[tuple[DatasetId, str, int, int]]
-    query = sqlalchemy.select(*columns).select_from(obscore_table).where(missing_where)
-    with db.query(query) as result:
+    columns = ("instrument_name", exposure_column, detector_column)
+    # Make a list of (instrument, exposure, detector) for matching records.
+    missing_records: list[tuple[str, int, int]]
+    with obscore_mgr.query(columns, **query_args) as result:
         missing_records = [tuple(row) for row in result]  # type: ignore
 
     instrument_exposures: MutableMapping[str, set[int]] = defaultdict(set)
-    for _, instrument, exposure, _ in missing_records:
+    for instrument, exposure, _ in missing_records:
         instrument_exposures[instrument].add(exposure)
     n_unique_exposures = sum(len(exp_set) for exp_set in instrument_exposures.values())
     _LOG.info(
@@ -188,37 +166,24 @@ def obscore_set_exposure_regions(
                 _LOG.debug("visit_detector_region record=%s", rec)
                 visit_detector_region[(instrument, rec.visit, rec.detector)] = rec.region
 
-    # Build dictionaries for update() method. DatasetID is the primary key in
-    # obscore table, so it is sufficient to identify a record.
-    update_rows: list[dict[str, Any]] = []
-    for dataset_id, instrument, exposure, detector in missing_records:
+    # Build data for update_exposure_regions() method, indexed by instrument.
+    updates: dict[str, list[tuple[int, int, Region]]] = defaultdict(list)
+    for instrument, exposure, detector in missing_records:
         # Find a region for every visit+detector
         visit = exposure_to_visit.get((instrument, exposure))
         if visit is not None:
             region = visit_detector_region.get((instrument, visit, detector))
             if region is not None:
-                region_data: Record = {}
+                updates[instrument].append((exposure, detector, region))
+                _LOG.debug(
+                    "instrument=%s exposure=%s detector=%s region=%s", instrument, exposure, detector, region
+                )
 
-                # ask each plugin for its values to add to a record.
-                for plugin in obscore_mgr.spatial_plugins:
-                    plugin_record = plugin.make_records(dataset_id, region)
-                    if plugin_record is not None:
-                        region_data.update(plugin_record)
-
-                region_data["dataset_id_column"] = dataset_id
-                update_rows.append(region_data)
-                _LOG.debug("exposure=%s detector=%s region=%s", exposure, detector, region)
-
-    _LOG.info("%d exposure records will be updated", len(update_rows))
-    if not dry_run and update_rows:
-        # Run update query
-        where_dict: dict[str, Any] = {
-            dataset_id_column: "dataset_id_column",
-        }
-
+    _LOG.info("%d (or more) exposure records will be updated", sum(len(rows) for rows in updates.values()))
+    if not dry_run and updates:
         count = 0
-        for rows_chunk in chunk_iterable(update_rows):
-            count += db.update(obscore_table, where_dict, *rows_chunk)
+        for instrument, rows in updates.items():
+            count += obscore_mgr.update_exposure_regions(instrument, rows)
         _LOG.info("Updated %s obscore records.", count)
 
         # Re-check number of records remaining.
