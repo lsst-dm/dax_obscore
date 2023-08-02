@@ -18,7 +18,7 @@ dataset_types:
     o_ucd: phot.count
     access_format: image/fits
     # access_url format is still under discussion/review:
-    datalink_url_fmt: "https://usdf-rsp.slac.stanford.edu/api/datalink/links?ID=butler%3A//LATISS/{id}"
+    datalink_url_fmt: "https://usdf-rsp.slac.stanford.edu/api/datalink/links?ID=butler%3A//embargo/{id}"
   calexp:
     dataproduct_type: image
     dataproduct_subtype: lsst.calexp
@@ -27,7 +27,7 @@ dataset_types:
     o_ucd: phot.count
     access_format: image/fits
     # access_url format is still under discussion/review:
-    datalink_url_fmt: "https://usdf-rsp.slac.stanford.edu/api/datalink/links?ID=butler%3A//LATISS/{id}"
+    datalink_url_fmt: "https://usdf-rsp.slac.stanford.edu/api/datalink/links?ID=butler%3A//embargo/{id}"
   quickLookExp:
     dataproduct_type: image
     dataproduct_subtype: lsst.quickLookExp
@@ -36,7 +36,7 @@ dataset_types:
     o_ucd: phot.count
     access_format: image/fits
     # access_url format is still under discussion/review:
-    datalink_url_fmt: "https://usdf-rsp.slac.stanford.edu/api/datalink/links?ID=butler%3A//LATISS/{id}"
+    datalink_url_fmt: "https://usdf-rsp.slac.stanford.edu/api/datalink/links?ID=butler%3A//embargo/{id}"
 extra_columns:
   lsst_visit:
     template: "{visit}"

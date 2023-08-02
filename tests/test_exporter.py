@@ -93,7 +93,7 @@ class TestCase(unittest.TestCase):
 
         butler = self.make_butler()
 
-        config = ExporterConfig(version=0, obs_collection="", dataset_types=[], facility_name="FACILITY")
+        config = ExporterConfig(version=0, obs_collection="", dataset_types={}, facility_name="FACILITY")
         xprtr = ObscoreExporter(butler, config)
         self.assertCountEqual(xprtr.schema.names, _STANDARD_COLUMNS)
 
@@ -102,7 +102,7 @@ class TestCase(unittest.TestCase):
             version=0,
             obs_collection="",
             extra_columns={"c1": 1, "c2": "string", "c3": {"template": "{calib_level}", "type": "float"}},
-            dataset_types=[],
+            dataset_types={},
             facility_name="FACILITY",
         )
         xprtr = ObscoreExporter(butler, config)
