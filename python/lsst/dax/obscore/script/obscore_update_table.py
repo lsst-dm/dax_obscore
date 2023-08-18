@@ -61,7 +61,8 @@ def obscore_update_table(
 
     # There is no client API for updating obscore table, so we need to access
     # internals of the Registry and obscore manager.
-    registry = butler.registry
+    # Have to use non-public Registry interface.
+    registry = butler._registry
     assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
     manager = registry._managers.obscore
     assert manager is not None, "Registry is not configured for obscore support"
