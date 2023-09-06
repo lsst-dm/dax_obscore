@@ -7,7 +7,7 @@ facility_name: Rubin-LSST
 # We don't explicitly specify instrument_name - it's auto-generated from the corresponding Butler dimension
 obs_collection: LATISS_LIVE       # may evolve as experience with this builds up
 collection_type: RUN              # means we are using all RUN-type collections that match line below
-collections: ["LATISS/raw/all", "LATISS/runs/quickLook/202.*"]
+collections: ["LATISS/raw/all", "LATISS/runs/quickLook/202.*", "LATISS/runs/AUXTEL_DRP_IMAGING.*", "LATISS/prompt/.*"]
 use_butler_uri: false             # do not use URI from Butler, use datalink_url_fmt defined below
 dataset_types:
   raw:
@@ -16,7 +16,7 @@ dataset_types:
     calib_level: 1
     obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     # access_url format is still under discussion/review:
     datalink_url_fmt: "https://usdf-rsp.slac.stanford.edu/api/datalink/links?ID=butler%3A//embargo/{id}"
   calexp:
@@ -25,7 +25,7 @@ dataset_types:
     calib_level: 2
     obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     # access_url format is still under discussion/review:
     datalink_url_fmt: "https://usdf-rsp.slac.stanford.edu/api/datalink/links?ID=butler%3A//embargo/{id}"
   quickLookExp:
@@ -34,7 +34,7 @@ dataset_types:
     calib_level: 2
     obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     # access_url format is still under discussion/review:
     datalink_url_fmt: "https://usdf-rsp.slac.stanford.edu/api/datalink/links?ID=butler%3A//embargo/{id}"
 extra_columns:
