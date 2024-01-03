@@ -81,7 +81,6 @@ def obscore_set_exposure_regions(
     ``dataproduct_type``, ``dataproduct_subtype``, ``instrument``, and
     have all values of ``region_columns`` columns set to NULL.
     """
-
     # Just to make sure that we have reasonable input
     assert len(region_columns) > 0, "Need at least one region-related column"
 

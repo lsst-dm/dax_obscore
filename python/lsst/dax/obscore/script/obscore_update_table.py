@@ -56,7 +56,6 @@ def obscore_update_table(
         If `True` then print the records that will be added, but do not
         actually add them.
     """
-
     butler = Butler(repo, writeable=True)
 
     # There is no client API for updating obscore table, so we need to access
@@ -111,7 +110,6 @@ def _collections(
     dataset_type : `DatasetType`
         Dataset type to search.
     """
-
     dataset_types = list(registry.queryDatasetTypes(config.dataset_types.keys()))
     _LOG.info("Found these dataset types in registry: %s", [ds.name for ds in dataset_types])
 

@@ -90,7 +90,6 @@ class TestCase(unittest.TestCase):
 
     def test_schema(self):
         """Check how schema is constructed"""
-
         butler = self.make_butler()
 
         config = ExporterConfig(version=0, obs_collection="", dataset_types={}, facility_name="FACILITY")

@@ -104,7 +104,7 @@ class _BatchCollector:
 
 
 class _CSVFile(io.BufferedWriter):
-    """File object that intercepts output data and does some editing.
+    r"""File object that intercepts output data and does some editing.
 
     Parameters
     ----------
@@ -121,7 +121,7 @@ class _CSVFile(io.BufferedWriter):
 
     Notes
     -----
-    This is a dirty hack to allow writing "\\N" to CSV for NULL values instead
+    This is a dirty hack to allow writing "\N" to CSV for NULL values instead
     of empty cells. Should be removed when "null_string" can be specified in
     WriteOptions to CSVWriter class.
     """
@@ -273,7 +273,6 @@ class ObscoreExporter:
         output : `str`
             Location of the output file.
         """
-
         compression = self.config.parquet_compression
         with ParquetWriter(output, self.schema, compression=compression) as writer:
             for record_batch in self._make_record_batches(self.config.batch_size):
@@ -322,7 +321,6 @@ class ObscoreExporter:
 
     def _make_record_batches(self, batch_size: int = 10_000) -> Iterator[RecordBatch]:
         """Generate batches of records to save to a file."""
-
         batch = _BatchCollector(self.schema)
 
         collections: Any = self.config.collections
