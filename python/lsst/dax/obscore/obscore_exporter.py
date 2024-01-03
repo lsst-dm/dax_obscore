@@ -75,6 +75,11 @@ class _BatchCollector:
     def add_to_batch(self, data: dict[str, Any]) -> None:
         """Add new row to a batch.
 
+        Parameters
+        ----------
+        data : `dict` [`str`, `~typing.Any`]
+            New row.
+
         Notes
         -----
         `data` dictionary is updated in place for efficiency.
@@ -136,7 +141,18 @@ class _CSVFile(io.BufferedWriter):
         self.buffer: bytes = b""
 
     def write(self, buffer: bytes) -> int:  # type: ignore
-        """Write next buffer to output."""
+        """Write next buffer to output.
+
+        Parameters
+        ----------
+        buffer : `bytes`
+            Buffer to write.
+
+        Returns
+        -------
+        size : `int`
+            The size of the buffer written.
+        """
         self.buffer += buffer
         self._process_buffer()
         return len(buffer)

@@ -48,11 +48,13 @@ def obscore_export(
     config : `str`
         Location of the configuration file.
     format : `str`
-        Output format, 'csv' or 'parquet'
+        Output format, 'csv' or 'parquet'.
     where : `str`
         Optional user expression, if provided overrides one in ``config``.
-    collections : `iterable` [ `str` ]
+    collections : `~collections.abc.Iterable` [ `str` ]
         Optional collection names, if provided overrides one in ``config``.
+    dataset_type : `~collections.abc.Iterable` [ `str` ]
+        Names of dataset types to export.
     """
     butler = Butler.from_config(repo, writeable=False)
 
