@@ -103,8 +103,8 @@ def _collections(
     """Generate list of collections and dataset types to search for dataset
     references.
 
-    Yield
-    -----
+    Yields
+    ------
     collection_record : `CollectionRecord`
         Record for a collection to search.
     dataset_type : `DatasetType`
