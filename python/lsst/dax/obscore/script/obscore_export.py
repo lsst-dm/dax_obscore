@@ -59,7 +59,7 @@ def obscore_export(
     butler = Butler.from_config(repo, writeable=False)
 
     config_data = Config(config)
-    cfg = ExporterConfig.parse_obj(config_data)
+    cfg = ExporterConfig.model_validate(config_data)
     if where:
         cfg.where = where
     if collections:
