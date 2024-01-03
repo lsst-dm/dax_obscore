@@ -21,7 +21,7 @@
 
 __all__ = ["obscore_export"]
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 from lsst.daf.butler import Butler, Config
 
@@ -33,7 +33,7 @@ def obscore_export(
     destination: str,
     config: str,
     format: str,
-    where: Optional[str],
+    where: str | None,
     collections: Iterable[str],
     dataset_type: Iterable[str],
 ) -> None:

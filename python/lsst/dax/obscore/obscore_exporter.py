@@ -26,7 +26,8 @@ __all__ = ["ObscoreExporter"]
 import contextlib
 import io
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, cast
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, cast
 
 import pyarrow
 import sqlalchemy
@@ -68,10 +69,10 @@ class _BatchCollector:
 
     def __init__(self, schema: Schema):
         self.schema = schema
-        self.batch: List[List] = [[] for column in self.schema.names]
+        self.batch: list[list] = [[] for column in self.schema.names]
         self.size = 0
 
-    def add_to_batch(self, data: Dict[str, Any]) -> None:
+    def add_to_batch(self, data: dict[str, Any]) -> None:
         """Add new row to a batch.
 
         Notes
@@ -174,13 +175,13 @@ class _ExposureRegionFactory(ExposureRegionFactory):
         self.universe = registry.dimensions
 
         # Maps instrument and visit ID to a region
-        self._visit_regions: Dict[str, Dict[int, Region]] = {}
+        self._visit_regions: dict[str, dict[int, Region]] = {}
         # Maps instrument+visit+detector to a region
-        self._visit_detector_regions: Dict[str, Dict[Tuple[int, int], Region]] = {}
+        self._visit_detector_regions: dict[str, dict[tuple[int, int], Region]] = {}
         # Maps instrument and exposure ID to a visit ID
-        self._exposure_to_visit: Dict[str, Dict[int, int]] = {}
+        self._exposure_to_visit: dict[str, dict[int, int]] = {}
 
-    def exposure_region(self, dataId: DataCoordinate, context: SqlQueryContext) -> Optional[Region]:
+    def exposure_region(self, dataId: DataCoordinate, context: SqlQueryContext) -> Region | None:
         # Docstring is inherited from a base class.
         registry = self.registry
         instrument = cast(str, dataId["instrument"])
