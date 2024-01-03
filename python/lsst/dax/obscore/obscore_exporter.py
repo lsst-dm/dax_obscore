@@ -31,7 +31,6 @@ from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, ca
 import pyarrow
 import sqlalchemy
 from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, ddl
-from lsst.daf.butler.registries.sql import SqlRegistry
 from lsst.daf.butler.registry.obscore import (
     ExposureRegionFactory,
     ObsCoreSchema,
@@ -39,6 +38,7 @@ from lsst.daf.butler.registry.obscore import (
     SpatialObsCorePlugin,
 )
 from lsst.daf.butler.registry.queries import SqlQueryBackend
+from lsst.daf.butler.registry.sql_registry import SqlRegistry
 from lsst.sphgeom import Region
 from pyarrow import RecordBatch, Schema
 from pyarrow.csv import CSVWriter, WriteOptions
