@@ -359,7 +359,7 @@ class ObscoreExporter:
             count = 0
             for ref in refs:
                 dataId = ref.dataId
-                _LOG.debug("New record, dataId=%s", dataId.full)
+                _LOG.debug("New record, dataId=%s", dataId.mapping)
                 # _LOG.debug("New record, records=%s", dataId.records)
 
                 record = self.record_factory(ref, context)
