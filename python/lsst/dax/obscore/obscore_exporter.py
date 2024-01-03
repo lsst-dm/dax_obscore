@@ -329,7 +329,7 @@ class ObscoreExporter:
             collections = ...
 
         # Have to use non-public Registry interface.
-        registry = self.butler._registry
+        registry = self.butler._registry  # type: ignore
         assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
         backend = SqlQueryBackend(registry._db, registry._managers)
 

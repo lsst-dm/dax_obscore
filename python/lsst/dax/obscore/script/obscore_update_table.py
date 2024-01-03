@@ -28,7 +28,6 @@ from collections.abc import Iterator
 from typing import Any
 
 from lsst.daf.butler import Butler, CollectionType, DatasetType
-from lsst.daf.butler.registries.sql import SqlRegistry
 from lsst.daf.butler.registry.interfaces import CollectionRecord
 from lsst.daf.butler.registry.obscore import (
     ConfigCollectionType,
@@ -36,6 +35,7 @@ from lsst.daf.butler.registry.obscore import (
     ObsCoreManagerConfig,
 )
 from lsst.daf.butler.registry.queries import SqlQueryBackend
+from lsst.daf.butler.registry.sql_registry import SqlRegistry
 from lsst.utils import iteration
 
 _LOG = logging.getLogger(__name__)
@@ -56,12 +56,12 @@ def obscore_update_table(
         If `True` then print the records that will be added, but do not
         actually add them.
     """
-    butler = Butler(repo, writeable=True)
+    butler = Butler.from_config(repo, writeable=True)
 
     # There is no client API for updating obscore table, so we need to access
     # internals of the Registry and obscore manager.
     # Have to use non-public Registry interface.
-    registry = butler._registry
+    registry = butler._registry  # type: ignore
     assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
     manager = registry._managers.obscore
     assert manager is not None, "Registry is not configured for obscore support"

@@ -54,7 +54,7 @@ def obscore_export(
     collections : `iterable` [ `str` ]
         Optional collection names, if provided overrides one in ``config``.
     """
-    butler = Butler(repo, writeable=False)
+    butler = Butler.from_config(repo, writeable=False)
 
     config_data = Config(config)
     cfg = ExporterConfig.parse_obj(config_data)

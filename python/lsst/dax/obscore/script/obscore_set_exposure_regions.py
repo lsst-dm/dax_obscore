@@ -84,7 +84,7 @@ def obscore_set_exposure_regions(
     # Just to make sure that we have reasonable input
     assert len(region_columns) > 0, "Need at least one region-related column"
 
-    butler = Butler(repo, writeable=True)
+    butler = Butler.from_config(repo, writeable=True)
 
     registry = butler.registry
     if registry.obsCoreTableManager is None:
@@ -119,7 +119,7 @@ def obscore_set_exposure_regions(
     # Make a list of (instrument, exposure, detector) for matching records.
     missing_records: list[tuple[str, int, int]]
     with obscore_mgr.query(columns, **query_args) as result:
-        missing_records = [tuple(row) for row in result]  # type: ignore
+        missing_records = [tuple(row) for row in result]
 
     instrument_exposures: MutableMapping[str, set[int]] = defaultdict(set)
     for instrument, exposure, _ in missing_records:
