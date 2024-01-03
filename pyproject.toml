@@ -1,3 +1,63 @@
+[build-system]
+requires = ["setuptools", "lsst-versions"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lsst-dax-obscore"
+requires-python = ">=3.11.0"
+description = "Conversion of Butler datasets to ObsCore format."
+license = {text = "GNU General Public License v3"}
+readme = "README.md"
+authors = [
+    {name="Rubin Observatory Data Management", email="dm-admin@lists.lsst.org"},
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GPLv3",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+keywords = ["lsst"]
+dependencies = [
+    "pyarrow",
+    "pyyaml >= 5.1",
+    "sqlalchemy >=1.4",
+    "click >= 7.0",
+    "lsst-utils",
+    "lsst-daf-butler",
+    "lsst-sphgeom",
+]
+dynamic = ["version"]
+
+[project.urls]
+"Homepage" = "https://github.com/lsst-dm/dax_obscore"
+
+[project.optional-dependencies]
+postgres = ["psycopg2"]
+
+test = [
+    "pytest >= 3.2",
+    "pytest-openfiles >= 0.5.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.setuptools]
+zip-safe = true
+license-files = ["COPYRIGHT", "LICENSE"]
+
+[tool.setuptools.package-data]
+"lsst.dax.obscore" = ["py.typed",]
+
+[tool.setuptools.dynamic]
+version = { attr = "lsst_versions.get_lsst_version" }
+
+[tool.pytest.ini_options]
+
 [tool.black]
 line-length = 110
 target-version = ["py311"]
@@ -5,10 +65,6 @@ target-version = ["py311"]
 [tool.isort]
 profile = "black"
 line_length = 110
-
-[build-system]
-requires = ["setuptools", "lsst-versions"]
-build-backend = "setuptools.build_meta"
 
 [tool.lsst_versions]
 write_to = "python/lsst/dax/obscore/version.py"
