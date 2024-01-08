@@ -1,5 +1,6 @@
 setupRequired(daf_butler)
 setupRequired(sphgeom)
+setupRequired(utils)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 envPrepend(DAF_BUTLER_PLUGINS, ${PRODUCT_DIR}/python/lsst/dax/obscore/cli/resources.yaml)
