@@ -75,7 +75,7 @@ def obscore_update_table(
             for ref in refs:
                 _LOG.info("Will be adding dataset %s", ref)
         else:
-            backend = SqlQueryBackend(registry._db, registry._managers)
+            backend = SqlQueryBackend(registry._db, registry._managers, registry.dimension_record_cache)
             context = backend.context()
             count = 0
             if collection_record.type is CollectionType.RUN:
