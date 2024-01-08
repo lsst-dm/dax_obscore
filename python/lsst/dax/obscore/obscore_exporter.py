@@ -26,12 +26,12 @@ __all__ = ["ObscoreExporter"]
 import contextlib
 import io
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, cast
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, cast
 
 import pyarrow
 import sqlalchemy
 from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, ddl
-from lsst.daf.butler.registries.sql import SqlRegistry
 from lsst.daf.butler.registry.obscore import (
     ExposureRegionFactory,
     ObsCoreSchema,
@@ -39,6 +39,7 @@ from lsst.daf.butler.registry.obscore import (
     SpatialObsCorePlugin,
 )
 from lsst.daf.butler.registry.queries import SqlQueryBackend
+from lsst.daf.butler.registry.sql_registry import SqlRegistry
 from lsst.sphgeom import Region
 from pyarrow import RecordBatch, Schema
 from pyarrow.csv import CSVWriter, WriteOptions
@@ -68,11 +69,16 @@ class _BatchCollector:
 
     def __init__(self, schema: Schema):
         self.schema = schema
-        self.batch: List[List] = [[] for column in self.schema.names]
+        self.batch: list[list] = [[] for column in self.schema.names]
         self.size = 0
 
-    def add_to_batch(self, data: Dict[str, Any]) -> None:
+    def add_to_batch(self, data: dict[str, Any]) -> None:
         """Add new row to a batch.
+
+        Parameters
+        ----------
+        data : `dict` [`str`, `~typing.Any`]
+            New row.
 
         Notes
         -----
@@ -104,7 +110,7 @@ class _BatchCollector:
 
 
 class _CSVFile(io.BufferedWriter):
-    """File object that intercepts output data and does some editing.
+    r"""File object that intercepts output data and does some editing.
 
     Parameters
     ----------
@@ -121,7 +127,7 @@ class _CSVFile(io.BufferedWriter):
 
     Notes
     -----
-    This is a dirty hack to allow writing "\\N" to CSV for NULL values instead
+    This is a dirty hack to allow writing "\N" to CSV for NULL values instead
     of empty cells. Should be removed when "null_string" can be specified in
     WriteOptions to CSVWriter class.
     """
@@ -135,7 +141,18 @@ class _CSVFile(io.BufferedWriter):
         self.buffer: bytes = b""
 
     def write(self, buffer: bytes) -> int:  # type: ignore
-        """Write next buffer to output."""
+        """Write next buffer to output.
+
+        Parameters
+        ----------
+        buffer : `bytes`
+            Buffer to write.
+
+        Returns
+        -------
+        size : `int`
+            The size of the buffer written.
+        """
         self.buffer += buffer
         self._process_buffer()
         return len(buffer)
@@ -174,13 +191,13 @@ class _ExposureRegionFactory(ExposureRegionFactory):
         self.universe = registry.dimensions
 
         # Maps instrument and visit ID to a region
-        self._visit_regions: Dict[str, Dict[int, Region]] = {}
+        self._visit_regions: dict[str, dict[int, Region]] = {}
         # Maps instrument+visit+detector to a region
-        self._visit_detector_regions: Dict[str, Dict[Tuple[int, int], Region]] = {}
+        self._visit_detector_regions: dict[str, dict[tuple[int, int], Region]] = {}
         # Maps instrument and exposure ID to a visit ID
-        self._exposure_to_visit: Dict[str, Dict[int, int]] = {}
+        self._exposure_to_visit: dict[str, dict[int, int]] = {}
 
-    def exposure_region(self, dataId: DataCoordinate, context: SqlQueryContext) -> Optional[Region]:
+    def exposure_region(self, dataId: DataCoordinate, context: SqlQueryContext) -> Region | None:
         # Docstring is inherited from a base class.
         registry = self.registry
         instrument = cast(str, dataId["instrument"])
@@ -273,7 +290,6 @@ class ObscoreExporter:
         output : `str`
             Location of the output file.
         """
-
         compression = self.config.parquet_compression
         with ParquetWriter(output, self.schema, compression=compression) as writer:
             for record_batch in self._make_record_batches(self.config.batch_size):
@@ -322,7 +338,6 @@ class ObscoreExporter:
 
     def _make_record_batches(self, batch_size: int = 10_000) -> Iterator[RecordBatch]:
         """Generate batches of records to save to a file."""
-
         batch = _BatchCollector(self.schema)
 
         collections: Any = self.config.collections
@@ -330,9 +345,9 @@ class ObscoreExporter:
             collections = ...
 
         # Have to use non-public Registry interface.
-        registry = self.butler._registry
+        registry = self.butler._registry  # type: ignore
         assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
-        backend = SqlQueryBackend(registry._db, registry._managers)
+        backend = SqlQueryBackend(registry._db, registry._managers, registry.dimension_record_cache)
 
         context = backend.context()
         for dataset_type_name in self.config.dataset_types:
@@ -344,7 +359,7 @@ class ObscoreExporter:
             count = 0
             for ref in refs:
                 dataId = ref.dataId
-                _LOG.debug("New record, dataId=%s", dataId.full)
+                _LOG.debug("New record, dataId=%s", dataId.mapping)
                 # _LOG.debug("New record, records=%s", dataId.records)
 
                 record = self.record_factory(ref, context)

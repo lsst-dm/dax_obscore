@@ -21,7 +21,7 @@ This package implements ``butler`` CLI plugin ``obscore-export`` which generates
 Configuration
 =============
 
-``butler obscore-export`` requires a configuration file in YAML format, the data in that file is used to populate in-memory configuration consisting of instances of :py:class:`~lsst.dax.obscore.ExporterConfig` and :py:class:`~lsst.dax.obscore.DatasetTypeConfig` classes.
+``butler obscore-export`` requires a configuration file in YAML format, the data in that file is used to populate in-memory configuration consisting of instances of :py:class:`~lsst.dax.obscore.ExporterConfig` and :py:class:`~lsst.daf.butler.registry.obscore.DatasetTypeConfig` classes.
 Documentation for these classes explains the type and meaning of the attributes.
 An example configuration is defined in ``configs/example.yaml`` file.
 
@@ -70,9 +70,6 @@ Python API reference
 ====================
 
 .. py:module:: lsst.dax.obscore
-
-.. autoclass:: lsst.dax.obscore.DatasetTypeConfig
-   :members:
 
 .. autoclass:: lsst.dax.obscore.ExporterConfig
    :members:

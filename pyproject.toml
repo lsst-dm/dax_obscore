@@ -1,14 +1,140 @@
+[build-system]
+requires = ["setuptools", "lsst-versions"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lsst-dax-obscore"
+requires-python = ">=3.11.0"
+description = "Conversion of Butler datasets to ObsCore format."
+license = {text = "GNU General Public License v3"}
+readme = "README.md"
+authors = [
+    {name="Rubin Observatory Data Management", email="dm-admin@lists.lsst.org"},
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GPLv3",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+keywords = ["lsst"]
+dependencies = [
+    "pyarrow",
+    "pyyaml >= 5.1",
+    "sqlalchemy >=1.4",
+    "click >= 7.0",
+    "lsst-utils",
+    "lsst-daf-butler",
+    "lsst-sphgeom",
+]
+dynamic = ["version"]
+
+[project.urls]
+"Homepage" = "https://github.com/lsst-dm/dax_obscore"
+
+[project.optional-dependencies]
+postgres = ["psycopg2"]
+
+test = [
+    "pytest >= 3.2",
+    "pytest-openfiles >= 0.5.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.setuptools]
+zip-safe = true
+license-files = ["COPYRIGHT", "LICENSE"]
+
+[tool.setuptools.package-data]
+"lsst.dax.obscore" = ["py.typed",]
+
+[tool.setuptools.dynamic]
+version = { attr = "lsst_versions.get_lsst_version" }
+
+[tool.pytest.ini_options]
+
 [tool.black]
 line-length = 110
-target-version = ["py38"]
+target-version = ["py311"]
 
 [tool.isort]
 profile = "black"
 line_length = 110
 
-[build-system]
-requires = ["setuptools", "lsst-versions"]
-build-backend = "setuptools.build_meta"
-
 [tool.lsst_versions]
 write_to = "python/lsst/dax/obscore/version.py"
+
+[tool.pydocstyle]
+convention = "numpy"
+# Our coding style does not require docstrings for magic methods (D105)
+# Our docstyle documents __init__ at the class level (D107)
+# We allow methods to inherit docstrings and this is not compatible with D102.
+# Docstring at the very first line is not required
+# D200, D205 and D400 all complain if the first sentence of the docstring does
+# not fit on one line. We do not require docstrings in __init__ files (D104).
+add-ignore = ["D107", "D105", "D102", "D100", "D200", "D205", "D400", "D104"]
+
+[tool.ruff]
+exclude = [
+    "__init__.py",
+]
+ignore = [
+    "N802",
+    "N803",
+    "N806",
+    "N812",
+    "N815",
+    "N816",
+    "N999",
+    "D107",
+    "D105",
+    "D102",
+    "D104",
+    "D100",
+    "D200",
+    "D205",
+    "D400",
+]
+line-length = 110
+select = [
+    "E",  # pycodestyle
+    "F",  # pycodestyle
+    "N",  # pep8-naming
+    "W",  # pycodestyle
+    "D",  # pydocstyle
+]
+target-version = "py311"
+extend-select = [
+    "RUF100", # Warn about unused noqa
+]
+
+[tool.ruff.pycodestyle]
+max-doc-length = 79
+
+[tool.ruff.pydocstyle]
+convention = "numpy"
+
+[tool.numpydoc_validation]
+checks = [
+    "all",  # All except the rules listed below.
+    "SA01",  # See Also section.
+    "EX01",  # Example section.
+    "SS06",  # Summary can go into second line.
+    "GL01",  # Summary text can start on same line as """
+    "GL08",  # Do not require docstring.
+    "ES01",  # No extended summary required.
+    "RT01",  # Unfortunately our @property trigger this.
+    "RT02",  # Does not want named return value. DM style says we do.
+    "SS05",  # pydocstyle is better at finding infinitive verb.
+]
+exclude = [
+    "^test_.*",  # Do not test docstrings in test code.
+    '^commands\.',  # Click docstrings, not numpydoc
+    '^__init__$',
+    '\._[a-zA-Z_]+$',  # Private methods.
+]

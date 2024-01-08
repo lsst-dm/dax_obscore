@@ -21,7 +21,7 @@
 
 __all__ = ["obscore_export"]
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 from lsst.daf.butler import Butler, Config
 
@@ -33,7 +33,7 @@ def obscore_export(
     destination: str,
     config: str,
     format: str,
-    where: Optional[str],
+    where: str | None,
     collections: Iterable[str],
     dataset_type: Iterable[str],
 ) -> None:
@@ -48,16 +48,18 @@ def obscore_export(
     config : `str`
         Location of the configuration file.
     format : `str`
-        Output format, 'csv' or 'parquet'
+        Output format, 'csv' or 'parquet'.
     where : `str`
         Optional user expression, if provided overrides one in ``config``.
-    collections : `iterable` [ `str` ]
+    collections : `~collections.abc.Iterable` [ `str` ]
         Optional collection names, if provided overrides one in ``config``.
+    dataset_type : `~collections.abc.Iterable` [ `str` ]
+        Names of dataset types to export.
     """
-    butler = Butler(repo, writeable=False)
+    butler = Butler.from_config(repo, writeable=False)
 
     config_data = Config(config)
-    cfg = ExporterConfig.parse_obj(config_data)
+    cfg = ExporterConfig.model_validate(config_data)
     if where:
         cfg.where = where
     if collections:
