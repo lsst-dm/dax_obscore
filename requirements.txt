@@ -1,7 +1,7 @@
 click
 pyarrow
 pyyaml
-sqlalchemy >= 1.4, < 2
-git+https://github.com/lsst/sphgeom@main#egg=lsst-sphgeom
-git+https://github.com/lsst/daf_butler@main#egg=lsst-daf-butler
-git+https://github.com/lsst/utils@main#egg=lsst-utils
+sqlalchemy >= 2, < 3
+lsst-sphgeom @ git+https://github.com/lsst/sphgeom@main
+lsst-daf-butler @ git+https://github.com/lsst/daf_butler@main
+lsst-utils @ git+https://github.com/lsst/utils@main

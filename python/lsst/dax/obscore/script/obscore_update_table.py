@@ -117,7 +117,7 @@ def _collections(
     if config.collection_type is ConfigCollectionType.RUN:
         collection_type = CollectionType.RUN
         if config.collections is None:
-            collections = ...  # type: ignore[unreachable]
+            collections = ...
         else:
             collections = [re.compile(collection) for collection in config.collections]
     elif config.collection_type is ConfigCollectionType.TAGGED:
