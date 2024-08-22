@@ -221,7 +221,7 @@ class _ExposureRegionFactory(ExposureRegionFactory):
 
         universe = self.universe
         detector_dimension = cast(Dimension, universe["detector"])
-        if detector_dimension in dataId:
+        if str(detector_dimension) in dataId:
             visit_detector_regions = self._visit_detector_regions.get(instrument)
 
             if visit_detector_regions is None:

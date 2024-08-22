@@ -35,9 +35,9 @@ dataset_types:
     access_format: application/x-votable+xml;content=datalink
     datalink_url_fmt: "http://datalink.org/{obs_id}"
 spectral_ranges:
-  "u": [330., 400.]
-  "g": [402., 552.]
-  "r": [552., 691.]
-  "i": [691., 818.]
-  "z": [818., 922.]
-  "y": [970., 1060.]
+  "u": [330.0e-9, 400.0e-9]
+  "g": [402.0e-9, 552.0e-9]
+  "r": [552.0e-9, 691.0e-9]
+  "i": [691.0e-9, 818.0e-9]
+  "z": [818.0e-9, 922.0e-9]
+  "y": [970.0e-9, 1060.0e-9]

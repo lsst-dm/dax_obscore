@@ -1,6 +1,6 @@
 facility_name: Rubin-LSST
 obs_collection: LSST.DP02
-collections: ["2.2i/runs/test-med-1/v23_0_0_rc2/PREOPS-863"]
+collections: ["2.2i/runs/DP0.2"]
 use_butler_uri: false
 dataset_types:
   raw:
@@ -43,10 +43,29 @@ dataset_types:
     o_ucd: phot.count
     access_format: image/fits
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
+extra_columns:
+  lsst_visit:
+    template: "{visit}"
+    type: "int"
+  lsst_detector:
+    template: "{detector}"
+    type: "int"
+  lsst_tract:
+    template: "{tract}"
+    type: "int"
+  lsst_patch:
+    template: "{patch}"
+    type: "int"
+  lsst_band:
+    template: "{band}"
+    type: "str"
+  lsst_filter:
+    template: "{physical_filter}"
+    type: "str"
 spectral_ranges:
-  "u": [330., 400.]
-  "g": [402., 552.]
-  "r": [552., 691.]
-  "i": [691., 818.]
-  "z": [818., 922.]
-  "y": [970., 1060.]
+  "u": [330.0e-9, 400.0e-9]
+  "g": [402.0e-9, 552.0e-9]
+  "r": [552.0e-9, 691.0e-9]
+  "i": [691.0e-9, 818.0e-9]
+  "z": [818.0e-9, 922.0e-9]
+  "y": [970.0e-9, 1060.0e-9]
