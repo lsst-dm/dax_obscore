@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["ExporterConfig"]
 
 from lsst.daf.butler.registry.obscore import ObsCoreConfig
+from pydantic import Field
 
 
 class ExporterConfig(ObsCoreConfig):
@@ -33,6 +34,9 @@ class ExporterConfig(ObsCoreConfig):
     """User expression to restrict the output. This value can be overridden
     with command line options.
     """
+
+    siav2: dict[str, str] = Field(default_factory=dict)
+    """SIAv2 parameters. Should not be specified if ``where`` is specified."""
 
     batch_size: int = 10_000
     """Number of records in a pyarrow RecordBatch"""
