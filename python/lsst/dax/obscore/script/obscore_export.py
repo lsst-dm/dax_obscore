@@ -80,5 +80,7 @@ def obscore_export(
         exporter.to_parquet(destination)
     elif format == "csv":
         exporter.to_csv(destination)
+    elif format == "votable":
+        exporter.to_votable(destination)
     else:
         raise ValueError(f"Unexpected output format {format:r}")

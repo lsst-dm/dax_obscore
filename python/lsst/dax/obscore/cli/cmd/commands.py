@@ -59,8 +59,8 @@ def obscore() -> None:
 )
 @click.option(
     "--format",
-    help="Output format, one of 'parquet' or 'csv'; default: parquet.",
-    type=click.Choice(["csv", "parquet"]),
+    help="Output format, one of 'parquet', 'votable', or 'csv'; default: parquet.",
+    type=click.Choice(["csv", "parquet", "votable"]),
     default="parquet",
 )
 @dataset_type_option(

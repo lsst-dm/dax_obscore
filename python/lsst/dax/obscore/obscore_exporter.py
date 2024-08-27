@@ -29,8 +29,14 @@ import logging
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, cast
 
+import astropy.io.votable
+import astropy.table
+import numpy as np
 import pyarrow
 import sqlalchemy
+import yaml
+from felis.datamodel import FelisType
+from felis.datamodel import Schema as FelisSchema
 from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, ddl
 from lsst.daf.butler.registry.obscore import (
     ExposureRegionFactory,
@@ -40,7 +46,9 @@ from lsst.daf.butler.registry.obscore import (
 )
 from lsst.daf.butler.registry.queries import SqlQueryBackend
 from lsst.daf.butler.registry.sql_registry import SqlRegistry
+from lsst.resources import ResourcePath
 from lsst.sphgeom import Region
+from numpy import ma
 from pyarrow import RecordBatch, Schema
 from pyarrow.csv import CSVWriter, WriteOptions
 from pyarrow.parquet import ParquetWriter
@@ -311,6 +319,79 @@ class ObscoreExporter:
             with CSVWriter(file, self.schema, write_options=options) as writer:
                 for record_batch in self._make_record_batches(self.config.batch_size):
                     writer.write_batch(record_batch)
+
+    def to_votable(self, output: str) -> None:
+        """Export Butler datasets as ObsCore data model in VOTable format.
+
+        Parameters
+        ----------
+        output : `str`
+            Location of the output file.
+        """
+        # Read the VOTable schema
+        obscore_defn = ResourcePath("resource://lsst.dax.obscore/configs/obscore_nominal.yaml").read()
+        obscore_data = yaml.safe_load(obscore_defn)
+        schema = FelisSchema.model_validate(obscore_data)
+
+        tables = schema.tables
+        if len(tables) != 1:
+            raise RuntimeError("More than one table defined in ObsCore schema")
+        obscore_columns = {column.name: column for column in tables[0].columns}
+
+        votable = astropy.io.votable.tree.VOTableFile()
+        resource = astropy.io.votable.tree.Resource()
+        votable.resources.append(resource)
+
+        fields = []
+        for arrow_field in self.schema:
+            if arrow_field.name in obscore_columns:
+                ffield = obscore_columns[arrow_field.name]
+                votable_datatype = FelisType.felis_type(ffield.datatype.value).votable_name
+                field = astropy.io.votable.tree.Field(
+                    votable,
+                    name=ffield.name,
+                    datatype=votable_datatype,
+                    arraysize=ffield.votable_arraysize,
+                    unit=ffield.ivoa_unit,
+                    ucd=ffield.ivoa_ucd,
+                )
+                fields.append(field)
+            elif arrow_field.name == "em_filter_name":
+                field = astropy.io.votable.tree.Field(
+                    votable,
+                    name="em_filter_name",
+                    datatype="char",
+                    arraysize="*",
+                )
+                fields.append(field)
+            else:
+                raise RuntimeError(f"Schema includes unrecognized column {arrow_field.name}")
+
+        table0 = astropy.io.votable.tree.TableElement(votable)
+        resource.tables.append(table0)
+        table0.fields.extend(fields)
+
+        def is_none(v: Any) -> bool:
+            return v is None
+
+        chunks = []
+        for record_batch in self._make_record_batches(self.config.batch_size):
+            pydict = record_batch.to_pydict()
+            columns = []
+            for label, column in pydict.items():
+                # Need to mask out any None values.
+                mask = [is_none(v) for v in column]
+                mc = astropy.table.MaskedColumn(column, name=label, mask=mask)
+                columns.append(mc)
+            chunk = astropy.table.Table(columns)
+            array = ma.array(np.asarray(chunk), mask=np.asarray(chunk.mask))
+            chunks.append(array)
+
+        # Combine all the chunks.
+        table0.array = ma.hstack(chunks)
+
+        # Write the output file.
+        votable.to_xml(output)
 
     def _make_schema(self, table_spec: ddl.TableSpec) -> Schema:
         """Create schema definition for output data.
