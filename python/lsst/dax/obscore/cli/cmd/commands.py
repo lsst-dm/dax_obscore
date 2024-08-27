@@ -142,3 +142,54 @@ def update_table(*args: Any, **kwargs: Any) -> None:
     used after adding obscore support to existing repository.
     """
     script.obscore_update_table(*args, **kwargs)
+
+
+@obscore.command(
+    short_help="Run SIAv2 query and return results.",
+    cls=ButlerCommand,
+)
+@repo_argument(required=True)
+@destination_argument(
+    required=True,
+    help="DESTINATION is the location of the output file.",
+    type=MWPath(file_okay=True, dir_okay=False, writable=True),
+)
+@click.option(
+    "--config",
+    "-c",
+    help="Location of the configuration file in YAML format, path or URL.",
+    required=True,
+)
+@click.option(
+    "--format",
+    help="Output format, one of 'parquet', 'votable', or 'csv'; default: votable.",
+    type=click.Choice(["csv", "parquet", "votable"]),
+    default="votable",
+)
+@dataset_type_option(
+    help=(
+        "Comma-separated list of dataset types. "
+        "If specified it must be a subset of dataset types defined in configuration file."
+    )
+)
+@collections_option()
+@click.option(
+    "--instrument",
+    help="Name of instrument to use in query",
+    default="",
+)
+@click.option(
+    "--pos",
+    help="IVOA POS region to use to restrict results.",
+    default="",
+)
+@click.option(
+    "--time",
+    help="Time or timespan to use to constraint the query. Uses MJD UTC.",
+    default="",
+)
+@click.option("--band", help="Wavelength range to constrain query. Units of meters.", default="")
+@options_file_option()
+def siav2(*args: Any, **kwargs: Any) -> None:
+    """Export Butler datasets as ObsCore Data Model in parquet format."""
+    script.obscore_siav2(*args, **kwargs)

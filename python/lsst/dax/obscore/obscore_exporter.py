@@ -37,7 +37,7 @@ import sqlalchemy
 import yaml
 from felis.datamodel import FelisType
 from felis.datamodel import Schema as FelisSchema
-from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, ddl
+from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, Timespan, ddl
 from lsst.daf.butler.registry.obscore import (
     ExposureRegionFactory,
     ObsCoreSchema,
@@ -370,6 +370,7 @@ class ObscoreExporter:
             return v is None
 
         chunks = []
+        n_rows = 0
         for record_batch in self._make_record_batches(self.config.batch_size):
             pydict = record_batch.to_pydict()
             columns = []
@@ -379,13 +380,16 @@ class ObscoreExporter:
                 mc = astropy.table.MaskedColumn(column, name=label, mask=mask)
                 columns.append(mc)
             chunk = astropy.table.Table(columns)
+            n_rows += len(chunk)
             array = ma.array(np.asarray(chunk), mask=np.asarray(chunk.mask))
             chunks.append(array)
 
         # Combine all the chunks.
-        table0.array = ma.hstack(chunks)
+        if chunks:
+            table0.array = ma.hstack(chunks)
 
         # Write the output file.
+        _LOG.info("Got %d result%s", n_rows, "" if n_rows == 1 else "s")
         votable.to_xml(output)
 
     def _make_schema(self, table_spec: ddl.TableSpec) -> Schema:
@@ -418,34 +422,118 @@ class ObscoreExporter:
 
         collections: Any = self.config.collections
         if not collections:
-            collections = ...
+            collections = "*"
+
+        # Find all possible instruments in case an SIAv2 query is given
+        # that needs instruments.
+        with self.butler._query() as query:
+            records = query.dimension_records("instrument")
+            instruments = [rec.name for rec in records]
+
+        # Handle explicit WHERE or build up from parameters.
+        if self.config.where and self.config.siav2:
+            raise RuntimeError("Can not specify both WHERE and SIAv2 options")
+        siav2 = self.config.siav2
+        if siav2:
+            bind = {}
+            if "INSTRUMENT" in siav2:
+                instruments = [siav2["INSTRUMENT"]]
+            if "POS" in siav2:
+                bind["region"] = Region.from_ivoa_pos(siav2["POS"])
+            if "TIME" in siav2:
+                components = siav2["TIME"].split()
+                if len(components) == 1:
+                    bind["ts"] = astropy.time.Time(float(components[0]), scale="utc", format="mjd")
+                elif len(components) == 2:
+                    times = []
+                    for t in siav2["TIME"].split():
+                        if t.lower() in ("-inf", "+inf"):
+                            times.append(None)
+                        else:
+                            times.append(astropy.time.Time(float(t), scale="utc", format="mjd"))
+                    bind["ts"] = Timespan(*times)
+                else:
+                    raise ValueError("Too many times in TIME field.")
+
+            # Where will change depending on dataset type.
+            where = ""
+        else:
+            where = self.config.where
+            bind = {}
 
         for dataset_type_name in self.config.dataset_types:
             _LOG.debug("Reading data for dataset %s", dataset_type_name)
-            refs = self.butler.registry.queryDatasets(
-                dataset_type_name, collections=collections, where=self.config.where
-            )
 
-            # need dimension records
-            refs = refs.expanded()
-            count = 0
-            for ref in refs:
-                dataId = ref.dataId
-                _LOG.debug("New record, dataId=%s", dataId.mapping)
-                # _LOG.debug("New record, records=%s", dataId.records)
+            local_bind = bind.copy()
 
-                record = self.record_factory(ref)
-                if record is None:
-                    continue
+            wheres = []
+            if siav2:
+                dataset_type = self.butler.get_dataset_type(dataset_type_name)
+                dims = dataset_type.dimensions
+                if "instrument" in dims:
+                    # Can not bind list of instruments.
+                    instrs = ",".join(repr(ins) for ins in instruments)
+                    wheres.append(f"instrument IN ({instrs})")
+                if "POS" in siav2:
+                    if "visit" in dims and "detector" in dims:
+                        region_dim = "visit_detector_region"
+                    elif "visit" in dims:
+                        region_dim = "visit"
+                    elif "patch" in dims:
+                        region_dim = "patch"
+                    elif "tract" in dims:
+                        region_dim = "tract"
+                    else:
+                        _LOG.warning("Can not support POS query for dataset type %s", dataset_type_name)
+                        continue
+                    wheres.append(f"{region_dim}.region OVERLAPS(region)")
+                if "TIME" in siav2:
+                    if "visit" in dims:
+                        time_dim = "visit"
+                    elif "exposure" in dims:
+                        time_dim = "exposure"
+                    elif "day_obs" in dims:
+                        time_dim = "day_obs"
+                    else:
+                        _LOG.warning("Can not support TIME query for dataset type %s", dataset_type_name)
+                        continue
+                    wheres.append(f"{time_dim}.timespan OVERLAPS(ts)")
+                if "physical_filter" in dims and "filters" in siav2:
+                    wheres.append("physical_filter IN (phys)")
+                    local_bind["phys"] = siav2["filters"]
+                elif "band" in dims and "bands" in siav2:
+                    wheres.append("band IN (bands)")
+                    local_bind["bands"] = siav2["bands"]
 
-                count += 1
+                # Create full where clause.
+                where = " AND ".join(wheres)
+                print(where)
+                print(local_bind)
 
-                batch.add_to_batch(record)
-                if batch.size >= batch_size:
-                    _LOG.debug("Saving next record batch, size=%s", batch.size)
-                    yield batch.make_record_batch()
+            with self.butler._query() as query:
+                refs = query.datasets(dataset_type_name, collections=collections, find_first=True)
+                if where:
+                    refs = refs.where(where, bind=local_bind)
 
-            _LOG.info("Copied %d records from dataset type %s", count, dataset_type_name)
+                # need dimension records
+                count = 0
+                for ref in refs.with_dimension_records():
+                    dataId = ref.dataId
+                    _LOG.debug("New record, dataId=%s", dataId.mapping)
+                    # _LOG.debug("New record, records=%s", dataId.records)
+
+                    record = self.record_factory(ref)
+                    if record is None:
+                        continue
+
+                    count += 1
+
+                    batch.add_to_batch(record)
+                    if batch.size >= batch_size:
+                        _LOG.debug("Saving next record batch, size=%s", batch.size)
+                        yield batch.make_record_batch()
+
+                _LOG.info("Copied %d records from dataset type %s", count, dataset_type_name)
 
         # Final batch if anything is there
         if batch.size > 0:
