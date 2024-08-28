@@ -21,24 +21,50 @@
 
 from __future__ import annotations
 
-__all__ = ["ExporterConfig"]
+__all__ = ["ExporterConfig", "WhereBind"]
 
 from typing import Any
 
 from lsst.daf.butler.registry.obscore import ObsCoreConfig
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class WhereBind(BaseModel):
+    """A where expression with associated bind parameters."""
+
+    model_config = ConfigDict(frozen=True)
+
+    where: str = ""
+    """User expression to restrict the output."""
+    bind: dict[str, Any] = Field(default_factory=dict)
+    """Bind values specified in the ``where`` expression."""
+
+    @classmethod
+    def combine(cls, wheres: list[WhereBind]) -> WhereBind:
+        """Combine multiple clauses into a single where expression.
+
+        Parameters
+        ----------
+        wheres : `list` [ `WhereBind`]
+            The user expressions to combine.
+        """
+        where = " AND ".join(w.where for w in wheres)
+        bind = {}
+        for w in wheres:
+            bind.update(w.bind)
+        return cls(where=where, bind=bind)
 
 
 class ExporterConfig(ObsCoreConfig):
     """Complete configuration for ObscoreExporter."""
 
-    where: str = ""
-    """User expression to restrict the output. This value can be overridden
-    with command line options.
-    """
+    where: WhereBind = Field(default_factory=WhereBind)
+    """Default user expression to restrict the output. Not used if
+    per dataset type user expression is provided."""
 
-    siav2: dict[str, Any] = Field(default_factory=dict)
-    """SIAv2 parameters. Should not be specified if ``where`` is specified."""
+    dataset_type_constraints: dict[str, list[WhereBind]] = Field(default_factory=dict)
+    """Specific user expressions for a given dataset type. If a dataset type
+    is not specified here the default ``where`` will be used."""
 
     batch_size: int = 10_000
     """Number of records in a pyarrow RecordBatch"""

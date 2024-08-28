@@ -25,7 +25,7 @@ from collections.abc import Iterable
 
 from lsst.daf.butler import Butler, Config
 
-from .. import ExporterConfig, ObscoreExporter
+from .. import ExporterConfig, ObscoreExporter, WhereBind
 
 
 def obscore_export(
@@ -61,7 +61,7 @@ def obscore_export(
     config_data = Config(config)
     cfg = ExporterConfig.model_validate(config_data)
     if where:
-        cfg.where = where
+        cfg.where = WhereBind(where=where)
     if collections:
         cfg.collections = list(collections)
     if dataset_type:

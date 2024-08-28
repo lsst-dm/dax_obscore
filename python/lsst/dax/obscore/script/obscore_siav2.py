@@ -22,12 +22,15 @@
 __all__ = ["obscore_siav2"]
 
 import logging
+import math
 from collections import defaultdict
 from collections.abc import Iterable
 
-from lsst.daf.butler import Butler, Config
+import astropy.time
+from lsst.daf.butler import Butler, Config, Timespan
+from lsst.sphgeom import Region
 
-from .. import ExporterConfig, ObscoreExporter
+from .. import ExporterConfig, ObscoreExporter, WhereBind
 
 _LOG = logging.getLogger(__name__)
 
@@ -81,17 +84,95 @@ def obscore_siav2(
 
     config_data = Config(config)
     cfg = ExporterConfig.model_validate(config_data)
-    if pos:
-        cfg.siav2["POS"] = pos
-    if time:
-        cfg.siav2["TIME"] = time
-    if instrument:
-        cfg.siav2["INSTRUMENT"] = instrument
-    if exptime:
-        cfg.siav2["EXPTIME"] = exptime
     if collections:
         cfg.collections = list(collections)
 
+    if dataset_type:
+        dataset_type_set = set(dataset_type)
+        # Check that configuration has all requested dataset types.
+        if not dataset_type_set.issubset(cfg.dataset_types):
+            extras = dataset_type_set - set(cfg.dataset_types)
+            raise ValueError(f"Dataset types {extras} are not defined in configuration file.")
+        # Remove dataset types that are not needed.
+        cfg.dataset_types = {
+            key: value for key, value in cfg.dataset_types.items() if key in dataset_type_set
+        }
+
+    cfg.dataset_type_constraints = process_siav2_parameters(butler, cfg, instrument, pos, time, band, exptime)
+
+    exporter = ObscoreExporter(butler, cfg)
+    if format == "parquet":
+        exporter.to_parquet(destination)
+    elif format == "csv":
+        exporter.to_csv(destination)
+    elif format == "votable":
+        exporter.to_votable(destination)
+    else:
+        raise ValueError(f"Unexpected output format {format:r}")
+
+
+def process_siav2_parameters(
+    butler: Butler,
+    cfg: ExporterConfig,
+    instrument: str,
+    pos: str,
+    time: str,
+    band: str,
+    exptime: str,
+) -> dict[str, list[WhereBind]]:
+    """Process SIAv2 parameters and calculate user where expressions
+    for each dataset type.
+
+    Parameters
+    ----------
+    butler : `lsst.daf.butler.Butler`
+        The butler to query for additional information.
+    cfg : `ExporterConfig`
+        Export config associated with this query.
+    instrument : `str`
+        Name of instrument to use for query.
+    pos : `str`
+        Spatial region to use for query.
+    time : `str`
+        Time or time span to use for the query, UTC MJD.
+    band : `str`
+        Wavelength range to constraint query. Units are meters.
+    exptime : `str`
+        Exposure time ranges in seconds.
+
+    Returns
+    -------
+    wheres : `dict` [ `str`, `list` [ `WhereBind` ]]
+        A dictionary with keys of the dataset type names and one or more
+        where clauses to apply when querying.
+    """
+    # Some queries require instruments and if no instrument is specified
+    # all instruments must be queried.
+    if instrument:
+        instruments = [instrument]
+    else:
+        with butler._query() as query:
+            records = query.dimension_records("instrument")
+            instruments = [rec.name for rec in records]
+
+    siav2_bind = {}  # Global binds available to queries.
+    if pos:
+        siav2_bind["region"] = Region.from_ivoa_pos(pos)
+    if time:
+        components = [float(t) for t in time.split()]
+        if len(components) == 1:
+            siav2_bind["ts"] = astropy.time.Time(components[0], scale="utc", format="mjd")
+        elif len(components) == 2:
+            times: list[astropy.time.Time | None] = []
+            for t in components:
+                if not math.isfinite(t):
+                    # Timespan uses None to indicate unbounded.
+                    times.append(None)
+                else:
+                    times.append(astropy.time.Time(float(t), scale="utc", format="mjd"))
+            siav2_bind["ts"] = Timespan(times[0], times[1])
+        else:
+            raise ValueError("Too many times in TIME field.")
     if band:
         # BAND is a wavelength in m.
         ranges = [float(b) for b in band.split()]
@@ -118,26 +199,86 @@ def obscore_siav2(
                     _LOG.warning(
                         "Ignoring physical filter %s since it has no defined spectral range", rec.name
                     )
-        cfg.siav2["filters"] = matching_filters
-        cfg.siav2["bands"] = matching_bands
+        siav2_bind["filters"] = matching_filters
+        siav2_bind["bands"] = matching_bands
 
-    if dataset_type:
-        dataset_type_set = set(dataset_type)
-        # Check that configuration has all requested dataset types.
-        if not dataset_type_set.issubset(cfg.dataset_types):
-            extras = dataset_type_set - set(cfg.dataset_types)
-            raise ValueError(f"Dataset types {extras} are not defined in configuration file.")
-        # Remove dataset types that are not needed.
-        cfg.dataset_types = {
-            key: value for key, value in cfg.dataset_types.items() if key in dataset_type_set
-        }
+    dataset_type_wheres = {}
+    for dataset_type_name in list(cfg.dataset_types):
+        wheres = []
+        dataset_type = butler.get_dataset_type(dataset_type_name)
+        dims = dataset_type.dimensions
+        instrument_wheres = []
+        if "instrument" in dims and instruments:
+            # Need separate where clauses for each instrument if
+            # we also are using a physical filters constraint.
+            if "physical_filter" in dims and "filters" in siav2_bind:
+                for inst in instruments:
+                    instrument_wheres.append(
+                        WhereBind(
+                            where=f"instrument = {inst!r} AND physical_filter in (phys)",
+                            bind={"phys": siav2_bind["filters"][inst]},
+                        )
+                    )
+            else:
+                # Can include all instruments in query, although
+                # binding does not work.
+                instrs = ",".join(repr(inst) for inst in instruments)
+                instrument_wheres.append(WhereBind(where=f"instrument IN ({instrs})", bind={}))
+        elif "band" in dims and "bands" in siav2_bind:
+            # Band is not needed for an instrument query since
+            # we will be using physical filters for those.
+            wheres.append(WhereBind(where="band IN (bands)", bind={"bands": siav2_bind["bands"]}))
+        if pos:
+            if "visit" in dims and "detector" in dims:
+                region_dim = "visit_detector_region"
+            elif "visit" in dims:
+                region_dim = "visit"
+            elif "patch" in dims:
+                region_dim = "patch"
+            elif "tract" in dims:
+                region_dim = "tract"
+            else:
+                _LOG.warning("Can not support POS query for dataset type %s", dataset_type_name)
+                del cfg.dataset_types[dataset_type_name]
+                continue
+            wheres.append(
+                WhereBind(
+                    where=f"{region_dim}.region OVERLAPS(region)",
+                    bind={"region": siav2_bind["region"]},
+                )
+            )
+        if time:
+            if "visit" in dims:
+                time_dim = "visit"
+            elif "exposure" in dims:
+                time_dim = "exposure"
+            elif "day_obs" in dims:
+                time_dim = "day_obs"
+            else:
+                _LOG.warning("Can not support TIME query for dataset type %s", dataset_type_name)
+                del cfg.dataset_types[dataset_type_name]
+                continue
+            wheres.append(WhereBind(where=f"{time_dim}.timespan OVERLAPS(ts)", bind={"ts": siav2_bind["ts"]}))
+        if exptime:
+            if "exposure" in dims:
+                exp_dim = "exposure"
+            elif "visit" in dims:
+                exp_dim = "visit"
+            else:
+                _LOG.warning("Can not support EXPTIME query for dataset type %s", dataset_type_name)
+                del cfg.dataset_types[dataset_type_name]
+                continue
+            ranges = [float(e) for e in exptime.split()]
+            if math.isfinite(ranges[0]):
+                wheres.append(WhereBind(where=f"{exp_dim}.exposure_time > {ranges[0]}", bind={}))
+            if math.isfinite(ranges[1]):
+                wheres.append(WhereBind(where=f"{exp_dim}.exposure_time < {ranges[1]}", bind={}))
 
-    exporter = ObscoreExporter(butler, cfg)
-    if format == "parquet":
-        exporter.to_parquet(destination)
-    elif format == "csv":
-        exporter.to_csv(destination)
-    elif format == "votable":
-        exporter.to_votable(destination)
-    else:
-        raise ValueError(f"Unexpected output format {format:r}")
+        if instrument_wheres:
+            where_clauses = [WhereBind.combine([iwhere] + wheres) for iwhere in instrument_wheres]
+        else:
+            where_clauses = [WhereBind.combine(wheres)]
+
+        dataset_type_wheres[dataset_type_name] = where_clauses
+
+    return dataset_type_wheres
