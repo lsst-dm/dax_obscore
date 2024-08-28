@@ -46,6 +46,7 @@ def obscore_siav2(
     pos: str,
     time: str,
     band: str,
+    exptime: str,
     collections: Iterable[str],
     dataset_type: Iterable[str],
 ) -> None:
@@ -69,6 +70,8 @@ def obscore_siav2(
         Time or time span to use for the query, UTC MJD.
     band : `str`
         Wavelength range to constraint query. Units are meters.
+    exptime : `str`
+        Exposure time ranges in seconds.
     collections : `~collections.abc.Iterable` [ `str` ]
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
@@ -84,6 +87,8 @@ def obscore_siav2(
         cfg.siav2["TIME"] = time
     if instrument:
         cfg.siav2["INSTRUMENT"] = instrument
+    if exptime:
+        cfg.siav2["EXPTIME"] = exptime
     if collections:
         cfg.collections = list(collections)
 
