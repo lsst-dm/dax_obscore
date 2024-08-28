@@ -23,6 +23,8 @@ from __future__ import annotations
 
 __all__ = ["ExporterConfig"]
 
+from typing import Any
+
 from lsst.daf.butler.registry.obscore import ObsCoreConfig
 from pydantic import Field
 
@@ -35,7 +37,7 @@ class ExporterConfig(ObsCoreConfig):
     with command line options.
     """
 
-    siav2: dict[str, str] = Field(default_factory=dict)
+    siav2: dict[str, Any] = Field(default_factory=dict)
     """SIAv2 parameters. Should not be specified if ``where`` is specified."""
 
     batch_size: int = 10_000

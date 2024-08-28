@@ -22,6 +22,7 @@
 __all__ = ["obscore_siav2"]
 
 import logging
+from collections import defaultdict
 from collections.abc import Iterable
 
 from lsst.daf.butler import Butler, Config
@@ -94,22 +95,26 @@ def obscore_siav2(
         # Configuration maps from physical_filter to wavelength.
         # This works for instrument/visit/exposure dimensions.
         # For coadds there is only band (ugrizy) and no instrument.
-        matching_bands = {}
+        matching_filters = defaultdict(set)
+        matching_bands = set()
         with butler._query() as query:
             records = query.dimension_records("physical_filter")
+            if instrument:
+                records = records.where("instrument = instr", bind={"instr": instrument})
             for rec in records:
-                if instrument and rec.instrument != instrument:
-                    continue
                 if rec.name in cfg.spectral_ranges:
-                    if _overlaps(*ranges, *cfg.spectral_ranges[rec.name]):
-                        # Ignore instrument for now.
-                        matching_bands[rec.name] = rec.band
+                    spec_range = cfg.spectral_ranges[rec.name]
+                    assert spec_range[0] is not None  # for mypy
+                    assert spec_range[1] is not None
+                    if _overlaps(ranges[0], ranges[1], spec_range[0], spec_range[1]):
+                        matching_filters[rec.instrument].add(rec.name)
+                        matching_bands.add(rec.band)
                 else:
                     _LOG.warning(
                         "Ignoring physical filter %s since it has no defined spectral range", rec.name
                     )
-        cfg.siav2["filters"] = list(matching_bands.keys())
-        cfg.siav2["bands"] = set(matching_bands.values())
+        cfg.siav2["filters"] = matching_filters
+        cfg.siav2["bands"] = matching_bands
 
     if dataset_type:
         dataset_type_set = set(dataset_type)
