@@ -25,7 +25,6 @@ __all__ = ["ObscoreExporter"]
 
 import contextlib
 import io
-import logging
 from collections.abc import Iterator
 from typing import Any, NamedTuple, cast
 
@@ -46,6 +45,7 @@ from lsst.daf.butler.registry.obscore import (
 )
 from lsst.resources import ResourcePath
 from lsst.sphgeom import Region
+from lsst.utils.logging import getLogger
 from numpy import ma
 from pyarrow import RecordBatch, Schema
 from pyarrow.csv import CSVWriter, WriteOptions
@@ -53,7 +53,7 @@ from pyarrow.parquet import ParquetWriter
 
 from . import ExporterConfig
 
-_LOG = logging.getLogger(__name__)
+_LOG = getLogger(__name__)
 
 # Map few standard Python types to pyarrow types
 _PYARROW_TYPE = {
@@ -548,7 +548,7 @@ class ObscoreExporter:
                     refs = query.datasets(dataset_type_name, collections=collections, find_first=True)
 
                     if where_clause.where:
-                        _LOG.debug("Processing query with constraint %s", where_clause)
+                        _LOG.verbose("Processing query with constraint %s", where_clause)
                         refs = refs.where(where_clause.where, bind=where_clause.bind)
 
                     # need dimension records
