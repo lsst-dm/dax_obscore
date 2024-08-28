@@ -25,6 +25,7 @@ __all__ = ["ObscoreExporter"]
 
 import contextlib
 import io
+import math
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
@@ -536,6 +537,19 @@ class ObscoreExporter:
                     wheres.append(
                         WhereBind(where=f"{time_dim}.timespan OVERLAPS(ts)", bind={"ts": siav2_bind["ts"]})
                     )
+                if "EXPTIME" in siav2:
+                    if "exposure" in dims:
+                        exp_dim = "exposure"
+                    elif "visit" in dims:
+                        exp_dim = "visit"
+                    else:
+                        _LOG.warning("Can not support EXPTIME query for dataset type %s", dataset_type_name)
+                        continue
+                    ranges = [float(e) for e in siav2["EXPTIME"].split()]
+                    if math.isfinite(ranges[0]):
+                        wheres.append(WhereBind(where=f"{exp_dim}.exposure_time > {ranges[0]}", bind={}))
+                    if math.isfinite(ranges[1]):
+                        wheres.append(WhereBind(where=f"{exp_dim}.exposure_time < {ranges[1]}", bind={}))
 
                 # Create full where clause.
                 def _combine_wherebind(wb: list[WhereBind]) -> WhereBind:

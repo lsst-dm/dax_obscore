@@ -189,6 +189,11 @@ def update_table(*args: Any, **kwargs: Any) -> None:
     default="",
 )
 @click.option("--band", help="Wavelength range to constrain query. Units of meters.", default="")
+@click.option(
+    "--exptime",
+    help="Exposure time ranges in seconds.",
+    default="",
+)
 @options_file_option()
 def siav2(*args: Any, **kwargs: Any) -> None:
     """Export Butler datasets as ObsCore Data Model in parquet format."""
