@@ -28,7 +28,6 @@ import pyarrow.parquet
 from lsst.daf.butler import Butler, Config
 from lsst.daf.butler.registry.obscore import DatasetTypeConfig
 from lsst.daf.butler.registry.obscore._schema import _STATIC_COLUMNS
-from lsst.daf.butler.tests import DatastoreMock
 from lsst.daf.butler.tests.utils import makeTestTempDir, removeTestTempDir
 from lsst.dax.obscore import ExporterConfig, ObscoreExporter
 
@@ -52,8 +51,7 @@ class TestCase(unittest.TestCase):
         config = Config()
         config["root"] = self.root
         config["registry", "db"] = f"sqlite:///{self.root}/gen3.sqlite3"
-        butler = Butler(Butler.makeRepo(self.root, config=config), writeable=True)
-        DatastoreMock.apply(butler)
+        butler = Butler(Butler.makeRepo(self.root, config=config), writeable=True, without_datastore=True)
         return butler
 
     def make_export_config(self):
@@ -165,7 +163,7 @@ class TestCase(unittest.TestCase):
     def test_export_parquet(self):
         """Test Parquet export method"""
         butler = self.make_butler()
-        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"))
+        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
 
         config = self.make_export_config()
         xprtr = ObscoreExporter(butler, config)
@@ -196,7 +194,7 @@ class TestCase(unittest.TestCase):
     def test_export_csv(self):
         """Test CSV export method"""
         butler = self.make_butler()
-        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"))
+        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
 
         # try several options for null_string
         for null_string in (None, "$NULL", ""):
