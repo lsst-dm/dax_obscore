@@ -23,6 +23,7 @@ from __future__ import annotations
 
 __all__ = ["ExporterConfig", "WhereBind"]
 
+from collections.abc import Iterable
 from typing import Any
 
 from lsst.daf.butler.registry.obscore import ObsCoreConfig
@@ -78,3 +79,21 @@ class ExporterConfig(ObsCoreConfig):
 
     csv_null_string: str = r"\N"
     """Value to use for NULLs in CSV output."""
+
+    def select_dataset_types(self, dataset_types: Iterable[str]) -> None:
+        """Update the configuration to include only these dataset types.
+
+        Parameters
+        ----------
+        dataset_types : `~collections.abc.Iterable` [ `str` ]
+            Names of dataset types to select.
+        """
+        dataset_type_set = set(dataset_types)
+        # Check that configuration has all requested dataset types.
+        if not dataset_type_set.issubset(self.dataset_types):
+            extras = dataset_type_set - set(self.dataset_types)
+            raise ValueError(f"Dataset types {extras} are not defined in configuration file.")
+        # Remove dataset types that are not needed.
+        self.dataset_types = {
+            key: value for key, value in self.dataset_types.items() if key in dataset_type_set
+        }
