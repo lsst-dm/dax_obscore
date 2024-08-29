@@ -352,6 +352,7 @@ class ObscoreExporter:
                 )
                 fields.append(field)
             elif arrow_field.name == "em_filter_name":
+                # Non-standard but part of internal standard schema.
                 field = astropy.io.votable.tree.Field(
                     votable,
                     name="em_filter_name",
@@ -360,7 +361,25 @@ class ObscoreExporter:
                 )
                 fields.append(field)
             else:
-                raise RuntimeError(f"Schema includes unrecognized column {arrow_field.name}")
+                # This must be a non-standard field. Attempt to add it.
+                kwargs = {}
+                datatype = ""
+                if arrow_field.type.equals(pyarrow.int64()):
+                    datatype = "int"
+                elif arrow_field.type.equals(pyarrow.string()):
+                    datatype = "char"
+                    kwargs["arraysize"] = "*"
+                elif arrow_field.type.equals(pyarrow.float64()):
+                    datatype = "double"
+                else:
+                    raise RuntimeError(f"Could not handle unrecognized column {arrow_field.name}")
+                field = astropy.io.votable.tree.Field(
+                    votable,
+                    name=arrow_field.name,
+                    datatype=datatype,
+                    **kwargs,
+                )
+                fields.append(field)
 
         table0 = astropy.io.votable.tree.TableElement(votable)
         resource.tables.append(table0)
