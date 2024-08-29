@@ -65,15 +65,7 @@ def obscore_export(
     if collections:
         cfg.collections = list(collections)
     if dataset_type:
-        dataset_type_set = set(dataset_type)
-        # Check that configuration has all requested dataset types.
-        if not dataset_type_set.issubset(cfg.dataset_types):
-            extras = dataset_type_set - set(cfg.dataset_types)
-            raise ValueError(f"Dataset types {extras} are not defined in configuration file.")
-        # Remove dataset types that are not needed.
-        cfg.dataset_types = {
-            key: value for key, value in cfg.dataset_types.items() if key in dataset_type_set
-        }
+        cfg.select_dataset_types(dataset_type)
 
     exporter = ObscoreExporter(butler, cfg)
     if format == "parquet":
