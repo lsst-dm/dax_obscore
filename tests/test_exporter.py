@@ -23,6 +23,7 @@ import csv
 import os
 import unittest
 
+import astropy.io.votable
 import pyarrow
 import pyarrow.parquet
 from lsst.daf.butler import Butler, Config
@@ -219,6 +220,33 @@ class TestCase(unittest.TestCase):
                     if expected_null != "":
                         self.assertFalse("" in row.values())
                     self.assertIn(expected_null, row.values())
+
+    def test_export_votable(self):
+        """Test Parquet export method"""
+        butler = self.make_butler()
+        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
+
+        config = self.make_export_config()
+        xprtr = ObscoreExporter(butler, config)
+        output = os.path.join(self.root, "output.vot")
+        xprtr.to_votable_file(output)
+
+        votable = astropy.io.votable.parse(output)
+        tables = list(votable.iter_tables())
+        self.assertEqual(len(tables), 1)
+        table0 = tables[0].array
+        self.assertEqual(len(table0), 35, str(table0))
+
+        self.assertEqual(set(table0["facility_name"]), {"Subaru"})
+        self.assertEqual(set(table0["obs_collection"]), {"obs-collection"})
+        self.assertEqual(set(table0["dataproduct_type"]), {"image"})
+        self.assertEqual(set(table0["dataproduct_subtype"]), {"lsst.calexp", "lsst.deepCoadd"})
+        self.assertEqual(set(table0["calib_level"]), {2, 3})
+        self.assertEqual(set(table0["instrument_name"]), {"HSC", ""})
+        self.assertEqual(set(table0["em_filter_name"]), {"i", "r"})
+        self.assertEqual(set(table0["day_obs"].tolist()), {20130617, 20131102, None})
+        for value in table0["s_region"]:
+            self.assertTrue(value.startswith("POLYGON "))
 
 
 if __name__ == "__main__":
