@@ -38,6 +38,8 @@ class WhereBind(BaseModel):
     """User expression to restrict the output."""
     bind: dict[str, Any] = Field(default_factory=dict)
     """Bind values specified in the ``where`` expression."""
+    extra_dims: frozenset[str] = Field(default_factory=frozenset)
+    """Extra dimensions required to be included in query."""
 
     @classmethod
     def combine(cls, wheres: list[WhereBind]) -> WhereBind:
@@ -50,9 +52,11 @@ class WhereBind(BaseModel):
         """
         where = " AND ".join(w.where for w in wheres)
         bind = {}
+        extras: set[str] = set()
         for w in wheres:
             bind.update(w.bind)
-        return cls(where=where, bind=bind)
+            extras.update(w.extra_dims)
+        return cls(where=where, bind=bind, extra_dims=extras)
 
 
 class ExporterConfig(ObsCoreConfig):

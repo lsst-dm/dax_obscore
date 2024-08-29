@@ -229,15 +229,24 @@ def process_siav2_parameters(
             # we will be using physical filters for those.
             wheres.append(WhereBind(where="band IN (bands)", bind={"bands": siav2_bind["bands"]}))
         if pos:
-            region_dim = dims.region_dim
-            if not region_dim:
-                _LOG.warning("Can not support POS query for dataset type %s", dataset_type_name)
-                del cfg.dataset_types[dataset_type_name]
-                continue
+            extra_dims = set()
+            region_dim_element = dims.region_dim
+            if not region_dim_element:
+                if "exposure" in dims:
+                    # Special case for Rubin default universe.
+                    region_dim = "visit_detector_region"
+                    extra_dims = {"visit"}
+                else:
+                    _LOG.warning("Can not support POS query for dataset type %s", dataset_type_name)
+                    del cfg.dataset_types[dataset_type_name]
+                    continue
+            else:
+                region_dim = region_dim_element.name
             wheres.append(
                 WhereBind(
                     where=f"{region_dim}.region OVERLAPS(region)",
                     bind={"region": siav2_bind["region"]},
+                    extra_dims=extra_dims,
                 )
             )
         if time:
