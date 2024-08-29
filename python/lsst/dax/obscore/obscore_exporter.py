@@ -320,13 +320,13 @@ class ObscoreExporter:
                 for record_batch in self._make_record_batches(self.config.batch_size):
                     writer.write_batch(record_batch)
 
-    def to_votable(self, output: str) -> None:
-        """Export Butler datasets as ObsCore data model in VOTable format.
+    def to_votable(self) -> astropy.io.votable.tree.VOTableFile:
+        """Run the export and return the results as a VOTable instance.
 
-        Parameters
-        ----------
-        output : `str`
-            Location of the output file.
+        Returns
+        -------
+        votable : `astropy.io.votable.tree.VOTableFile`
+            The resulting matches as a VOTable.
         """
         # Read the VOTable schema
         obscore_defn = ResourcePath("resource://lsst.dax.obscore/configs/obscore_nominal.yaml").read()
@@ -395,6 +395,17 @@ class ObscoreExporter:
 
         # Write the output file.
         _LOG.info("Got %d result%s", n_rows, "" if n_rows == 1 else "s")
+        return votable
+
+    def to_votable_file(self, output: str) -> None:
+        """Export Butler datasets as ObsCore data model in VOTable format.
+
+        Parameters
+        ----------
+        output : `str`
+            Location of the output file.
+        """
+        votable = self.to_votable()
         votable.to_xml(output)
 
     def _make_schema(self, table_spec: ddl.TableSpec) -> Schema:
