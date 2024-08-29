@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-__all__ = ["process_siav2_parameters"]
+__all__ = ["process_siav2_parameters", "siav2_query"]
 
 import logging
 import math
@@ -264,6 +264,11 @@ def siav2_query(
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
         Names of dataset types to include in query.
+
+    Returns
+    -------
+    votable : `astropy.io.votable.tree.VOTableFile`
+        Results of query as a VOTable.
     """
     # Will modify config so copy it.
     cfg = config.model_copy(deep=True)
