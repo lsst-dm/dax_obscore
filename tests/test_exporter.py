@@ -80,8 +80,8 @@ class TestCase(unittest.TestCase):
                 ),
             },
             spectral_ranges={
-                "r": [552.0, 691.0],
-                "i": [691.0, 818.0],
+                "r": [552.0e-9, 691.0e-9],
+                "i": [691.0e-9, 818.0e-9],
             },
             extra_columns={"day_obs": {"template": "{records[visit].day_obs}", "type": "int"}},
         )
