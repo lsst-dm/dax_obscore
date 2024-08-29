@@ -229,15 +229,8 @@ def process_siav2_parameters(
             # we will be using physical filters for those.
             wheres.append(WhereBind(where="band IN (bands)", bind={"bands": siav2_bind["bands"]}))
         if pos:
-            if "visit" in dims and "detector" in dims:
-                region_dim = "visit_detector_region"
-            elif "visit" in dims:
-                region_dim = "visit"
-            elif "patch" in dims:
-                region_dim = "patch"
-            elif "tract" in dims:
-                region_dim = "tract"
-            else:
+            region_dim = dims.region_dim
+            if not region_dim:
                 _LOG.warning("Can not support POS query for dataset type %s", dataset_type_name)
                 del cfg.dataset_types[dataset_type_name]
                 continue
@@ -248,13 +241,8 @@ def process_siav2_parameters(
                 )
             )
         if time:
-            if "visit" in dims:
-                time_dim = "visit"
-            elif "exposure" in dims:
-                time_dim = "exposure"
-            elif "day_obs" in dims:
-                time_dim = "day_obs"
-            else:
+            time_dim = dims.timespan_dim
+            if not time_dim:
                 _LOG.warning("Can not support TIME query for dataset type %s", dataset_type_name)
                 del cfg.dataset_types[dataset_type_name]
                 continue
