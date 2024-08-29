@@ -58,10 +58,10 @@ extra_columns:
     type: "int"
   lsst_band:
     template: "{band}"
-    type: "str"
+    type: "string"
   lsst_filter:
     template: "{physical_filter}"
-    type: "str"
+    type: "string"
 spectral_ranges:
   "u": [330.0e-9, 400.0e-9]
   "g": [402.0e-9, 552.0e-9]
