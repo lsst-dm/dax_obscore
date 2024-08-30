@@ -26,13 +26,15 @@ __all__ = ["SIAv2Handler", "siav2_query"]
 import logging
 import math
 from collections import defaultdict
-from collections.abc import Iterable
-from typing import Any
+from collections.abc import Iterable, Iterator
+from typing import Any, Self
 
 import astropy.io.votable
 import astropy.time
 from lsst.daf.butler import Butler, DimensionGroup, Timespan
+from lsst.daf.butler.pydantic_utils import SerializableRegion, SerializableTime
 from lsst.sphgeom import Region
+from pydantic import BaseModel
 
 from .config import ExporterConfig, WhereBind
 from .obscore_exporter import ObscoreExporter
@@ -40,26 +42,90 @@ from .obscore_exporter import ObscoreExporter
 _LOG = logging.getLogger(__name__)
 
 
-def _overlaps(start1: float, end1: float, start2: float, end2: float) -> bool:
-    """Return whether range (start1, end1) overlaps with (start2, end2)
+class Interval(BaseModel):
+    """Representation of a simple interval."""
 
-    Parameters
-    ----------
-    start1 : `float`
-        Start of first range.
-    end1 : `float`
-        End of first range.
-    start2 : `float`
-        Start of second range.
-    end2 : `float`
-        End of second range.
+    start: float
+    """Start of the interval."""
+    end: float
+    """End of the interval."""
 
-    Returns
-    -------
-    overlaps : `bool`
-        `True` if range 1 overlaps range 2.
-    """
-    return end1 >= start2 and end2 >= start1
+    @classmethod
+    def from_string(cls, string: str) -> Self:
+        """Create interval from string of form 'START END'.
+
+        Parameters
+        ----------
+        string : `str`
+            String representing the interval. +Inf and -Inf are allowed.
+            If there is only one number the start and end interval are the
+            same.
+
+        Returns
+        -------
+        interval : `Interval`
+            The derived interval.
+        """
+        interval = [float(b) for b in string.split()]
+        if len(interval) == 1:
+            interval.append(interval[0])
+        return cls(start=interval[0], end=interval[1])
+
+    def overlaps(self, other: Interval) -> bool:
+        """Return whether two intervals overlap.
+
+        Parameters
+        ----------
+        other : `Interval`
+            Interval to check against.
+
+        Returns
+        -------
+        overlaps : `bool`
+            `True` if this interval overlaps the other.
+        """
+        return self.end >= other.start and other.end >= self.start
+
+    def __iter__(self) -> Iterator[float]:  # type: ignore
+        return iter((self.start, self.end))
+
+
+class SIAv2Parameters(BaseModel):
+    """Parsed versions of SIAv2 parameters."""
+
+    instrument: str | None = None
+    pos: SerializableRegion | None = None
+    time: Timespan | SerializableTime | None = None
+    band: Interval | None = None
+    exptime: Interval | None = None
+
+    @classmethod
+    def from_siav2(
+        cls, instrument: str = "", pos: str = "", time: str = "", band: str = "", exptime: str = ""
+    ) -> Self:
+        parsed: dict[str, Any] = {}
+        if instrument:
+            parsed["instrument"] = instrument
+        if pos:
+            parsed["pos"] = Region.from_ivoa_pos(pos)
+        if band:
+            parsed["band"] = Interval.from_string(band)
+        if exptime:
+            parsed["exptime"] = Interval.from_string(exptime)
+        if time:
+            time_interval = Interval.from_string(time)
+            if time_interval.start == time_interval.end:
+                parsed["time"] = astropy.time.Time(time_interval.start, scale="utc", format="mjd")
+            else:
+                times: list[astropy.time.Time | None] = []
+                for t in time_interval:
+                    if not math.isfinite(t):
+                        # Timespan uses None to indicate unbounded.
+                        times.append(None)
+                    else:
+                        times.append(astropy.time.Time(float(t), scale="utc", format="mjd"))
+                parsed["time"] = Timespan(times[0], times[1])
+        return cls.model_validate(parsed)
 
 
 class SIAv2Handler:
@@ -78,25 +144,6 @@ class SIAv2Handler:
         self.butler = butler
         self.config = config
 
-    @staticmethod
-    def _process_interval(param: str) -> tuple[float, float]:
-        """Extract interval of two floats from string.
-
-        Parameters
-        ----------
-        param : `str`
-            String of form "N1 N2" or "N1" of numbers.
-
-        Returns
-        -------
-        interval : `tuple` [ `float`, `float` ]
-            Two numbers. If only one is found it will be duplicated.
-        """
-        interval = [float(b) for b in param.split()]
-        if len(interval) == 1:
-            interval.append(interval[0])
-        return interval[0], interval[1]  # For mypy.
-
     def get_all_instruments(self) -> list[str]:
         """Query butler for all known instruments.
 
@@ -109,16 +156,14 @@ class SIAv2Handler:
             records = query.dimension_records("instrument")
             return [rec.name for rec in records]
 
-    def get_band_information(
-        self, instruments: list[str], band_interval: tuple[float, float]
-    ) -> dict[str, Any]:
+    def get_band_information(self, instruments: list[str], band_interval: Interval) -> dict[str, Any]:
         """Read all information from butler necessary to form a band query.
 
         Parameters
         ----------
         instruments : `list` [ `str` ]
             Instruments that could be involved in the band query.
-        band_interval : `tuple` [ `float`, `float` ]
+        band_interval : `Interval`
             The band constraints.
 
         Returns
@@ -146,9 +191,10 @@ class SIAv2Handler:
                 records = records.where(f"instrument IN ({instrs})")
             for rec in records:
                 if (spec_range := self.config.spectral_ranges.get(rec.name)) is not None:
+                    spec_interval = Interval(start=spec_range[0], end=spec_range[1])
                     assert spec_range[0] is not None  # for mypy
                     assert spec_range[1] is not None
-                    if _overlaps(band_interval[0], band_interval[1], spec_range[0], spec_range[1]):
+                    if band_interval.overlaps(spec_interval):
                         matching_filters[rec.instrument].add(rec.name)
                         matching_bands.add(rec.band)
                 else:
@@ -188,36 +234,22 @@ class SIAv2Handler:
             present since some queries are incompatible with some dataset
             types.
         """
-        # Store parsed versions of input parameters when not simple strings.
-        parsed: dict[str, Region | tuple[float, float] | astropy.time.Time | Timespan] = {}
+        # Parse the SIAv2 parameters
+        parsed = SIAv2Parameters.from_siav2(
+            instrument=instrument, pos=pos, band=band, time=time, exptime=exptime
+        )
 
-        if instrument:
-            parsed["instrument"] = [instrument]
+        if parsed.instrument:
+            instruments = [instrument]
         else:
             # If no explicit instrument, then all instruments could be valid.
             # Some queries like band require the instrument so ask the butler
             # for all values up front.
-            parsed["instruments"] = self.get_all_instruments()
-        if pos:
-            parsed["region"] = Region.from_ivoa_pos(pos)
-        if band:
-            parsed["band"] = self._process_interval(band)
-            parsed["band_info"] = self.get_band_information(parsed["instruments"], parsed["band"])
-        if exptime:
-            parsed["exptime"] = self._process_interval(exptime)
-        if time:
-            time_interval = self._process_interval(time)
-            if time_interval[0] == time_interval[1]:
-                parsed["time"] = astropy.time.Time(time_interval[0], scale="utc", format="mjd")
-            else:
-                times: list[astropy.time.Time | None] = []
-                for t in time_interval:
-                    if not math.isfinite(t):
-                        # Timespan uses None to indicate unbounded.
-                        times.append(None)
-                    else:
-                        times.append(astropy.time.Time(float(t), scale="utc", format="mjd"))
-                parsed["time"] = Timespan(times[0], times[1])
+            instruments = self.get_all_instruments()
+
+        band_info: dict[str, Any] = {}
+        if parsed.band:
+            band_info = self.get_band_information(instruments, parsed.band)
 
         # Loop over each dataset type calculating custom query parameters.
         dataset_type_wheres = {}
@@ -225,14 +257,12 @@ class SIAv2Handler:
             wheres = []
             dataset_type = self.butler.get_dataset_type(dataset_type_name)
             dims = dataset_type.dimensions
-            instrument_wheres, where = self.from_instrument_or_band(
-                parsed["instruments"], parsed.get("band_info", {}), dims
-            )
+            instrument_wheres, where = self.from_instrument_or_band(instruments, band_info, dims)
             if where is not None:
                 wheres.append(where)
 
-            if pos:
-                where = self.from_pos(parsed["region"], dims)
+            if parsed.pos:
+                where = self.from_pos(parsed.pos, dims)
                 if not where:
                     _LOG.warning(
                         "Can not support POS query for dataset type %s. Skipping it.", dataset_type_name
@@ -240,8 +270,8 @@ class SIAv2Handler:
                     continue
                 wheres.append(where)
 
-            if time:
-                where = self.from_time(parsed["time"], dims)
+            if parsed.time:
+                where = self.from_time(parsed.time, dims)
                 if not where:
                     _LOG.warning(
                         "Dataset type %s has no timespan defined so assuming all datasets match.",
@@ -250,8 +280,8 @@ class SIAv2Handler:
                 else:
                     wheres.append(where)
 
-            if exptime:
-                exptime_wheres = self.from_exptime(parsed["exptime"], dims)
+            if parsed.exptime:
+                exptime_wheres = self.from_exptime(parsed.exptime, dims)
                 if exptime_wheres is None:
                     _LOG.warning(
                         "Can not support EXPTIME query for dataset type %s. Skipping it.", dataset_type_name
@@ -371,14 +401,12 @@ class SIAv2Handler:
             return None
         return WhereBind(where=f"{time_dim}.timespan OVERLAPS(ts)", bind={"ts": ts})
 
-    def from_exptime(
-        self, exptime_interval: tuple[float, float], dimensions: DimensionGroup
-    ) -> list[WhereBind] | None:
+    def from_exptime(self, exptime_interval: Interval, dimensions: DimensionGroup) -> list[WhereBind] | None:
         """Convert an exposure time interval to a butler where clause.
 
         Parameters
         ----------
-        exptime_interval : `tuple` [`float`, `float` ]
+        exptime_interval : `Interval`
             The exposure time interval of interest as two floating point UTC
             MJDs.
         dimensions : `lsst.daf.butler.DimensionGroup`
