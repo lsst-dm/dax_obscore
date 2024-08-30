@@ -202,10 +202,14 @@ def process_siav2_parameters(
         if time:
             time_dim = dims.timespan_dim
             if not time_dim:
-                _LOG.warning("Can not support TIME query for dataset type %s", dataset_type_name)
-                del cfg.dataset_types[dataset_type_name]
-                continue
-            wheres.append(WhereBind(where=f"{time_dim}.timespan OVERLAPS(ts)", bind={"ts": siav2_bind["ts"]}))
+                _LOG.warning(
+                    "Dataset type %s has no timespan defined so assuming all datasets match.",
+                    dataset_type_name
+                )
+            else:
+                wheres.append(
+                    WhereBind(where=f"{time_dim}.timespan OVERLAPS(ts)", bind={"ts": siav2_bind["ts"]})
+                )
         if exptime:
             if "exposure" in dims:
                 exp_dim = "exposure"
