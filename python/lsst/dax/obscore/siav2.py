@@ -34,7 +34,7 @@ import astropy.time
 from lsst.daf.butler import Butler, DimensionGroup, Timespan
 from lsst.daf.butler.pydantic_utils import SerializableRegion, SerializableTime
 from lsst.sphgeom import Region
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from .config import ExporterConfig, WhereBind
 from .obscore_exporter import ObscoreExporter
@@ -98,10 +98,25 @@ class SIAv2Parameters(BaseModel):
     time: Timespan | SerializableTime | None = None
     band: Interval | None = None
     exptime: Interval | None = None
+    calib: frozenset[int] = frozenset()
+
+    @field_validator("calib")
+    @classmethod
+    def check_calib(cls, calib: frozenset[int]) -> frozenset[int]:
+        valid_calib = {0, 1, 2, 3}
+        if calib - valid_calib:
+            raise ValueError(f"Calib levels can only be ({valid_calib}) but got {calib}")
+        return calib
 
     @classmethod
     def from_siav2(
-        cls, instrument: str = "", pos: str = "", time: str = "", band: str = "", exptime: str = ""
+        cls,
+        instrument: str = "",
+        pos: str = "",
+        time: str = "",
+        band: str = "",
+        exptime: str = "",
+        calib: Iterable[int] = (),
     ) -> Self:
         parsed: dict[str, Any] = {}
         if instrument:
@@ -125,6 +140,8 @@ class SIAv2Parameters(BaseModel):
                     else:
                         times.append(astropy.time.Time(float(t), scale="utc", format="mjd"))
                 parsed["time"] = Timespan(times[0], times[1])
+        if calib:
+            parsed["calib"] = frozenset(calib)
         return cls.model_validate(parsed)
 
 
@@ -210,6 +227,7 @@ class SIAv2Handler:
         time: str = "",
         band: str = "",
         exptime: str = "",
+        calib: Iterable[int] = (),
     ) -> dict[str, list[WhereBind]]:
         """Process an SIAv2 query.
 
@@ -225,6 +243,8 @@ class SIAv2Handler:
             Wavelength range to constraint query. Units are meters.
         exptime : `str`
             Exposure time ranges in seconds.
+        calib : `~collections.abc.Iterable` [ `int` ]
+            One or more calibration levels.
 
         Returns
         -------
@@ -236,7 +256,12 @@ class SIAv2Handler:
         """
         # Parse the SIAv2 parameters
         parsed = SIAv2Parameters.from_siav2(
-            instrument=instrument, pos=pos, band=band, time=time, exptime=exptime
+            instrument=instrument,
+            pos=pos,
+            band=band,
+            time=time,
+            exptime=exptime,
+            calib=calib,
         )
 
         if parsed.instrument:
@@ -254,6 +279,11 @@ class SIAv2Handler:
         # Loop over each dataset type calculating custom query parameters.
         dataset_type_wheres = {}
         for dataset_type_name in list(self.config.dataset_types):
+            if parsed.calib:
+                dataset_type_config = self.config.dataset_types[dataset_type_name]
+                if dataset_type_config.calib_level not in parsed.calib:
+                    continue
+
             wheres = []
             dataset_type = self.butler.get_dataset_type(dataset_type_name)
             dims = dataset_type.dimensions
@@ -439,6 +469,7 @@ def siav2_query(
     time: str = "",
     band: str = "",
     exptime: str = "",
+    calib: Iterable[int] = (),
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
 ) -> astropy.io.votable.tree.VOTableFile:
@@ -460,6 +491,8 @@ def siav2_query(
         Wavelength range to constraint query. Units are meters.
     exptime : `str`
         Exposure time ranges in seconds.
+    calib : `~collections.abc.Iterable` [ `str` ]
+       Calibration levels to select.
     collections : `~collections.abc.Iterable` [ `str` ]
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
@@ -480,7 +513,7 @@ def siav2_query(
         cfg.select_dataset_types(dataset_type)
 
     handler = SIAv2Handler(butler, cfg)
-    cfg.dataset_type_constraints = handler.process_query(instrument, pos, time, band, exptime)
+    cfg.dataset_type_constraints = handler.process_query(instrument, pos, time, band, exptime, calib)
 
     # Downselect the dataset types being queried -- a missing constraint
     # means that the dataset type is being skipped.
