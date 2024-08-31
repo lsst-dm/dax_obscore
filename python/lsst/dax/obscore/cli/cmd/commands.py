@@ -194,6 +194,12 @@ def update_table(*args: Any, **kwargs: Any) -> None:
     help="Exposure time ranges in seconds.",
     default="",
 )
+@click.option(
+    "--calib",
+    help="Calibration level of the data.",
+    multiple=True,
+    type=int,
+)
 @options_file_option()
 def siav2(*args: Any, **kwargs: Any) -> None:
     """Export Butler datasets as ObsCore Data Model in parquet format."""

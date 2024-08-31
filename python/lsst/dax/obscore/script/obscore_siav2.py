@@ -42,6 +42,7 @@ def obscore_siav2(
     time: str,
     band: str,
     exptime: str,
+    calib: Iterable[int],
     collections: Iterable[str],
     dataset_type: Iterable[str],
 ) -> None:
@@ -67,6 +68,8 @@ def obscore_siav2(
         Wavelength range to constraint query. Units are meters.
     exptime : `str`
         Exposure time ranges in seconds.
+    calib : `~collections.abc.Iterable` [ `int` ]
+        Calibration level to select. All are selected if none specified.
     collections : `~collections.abc.Iterable` [ `str` ]
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
@@ -77,5 +80,5 @@ def obscore_siav2(
     config_data = Config(config)
     cfg = ExporterConfig.model_validate(config_data)
 
-    votable = siav2_query(butler, cfg, instrument, pos, time, band, exptime, collections, dataset_type)
+    votable = siav2_query(butler, cfg, instrument, pos, time, band, exptime, calib, collections, dataset_type)
     votable.to_xml(destination)
