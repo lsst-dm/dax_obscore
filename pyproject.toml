@@ -29,6 +29,7 @@ dependencies = [
     "lsst-utils",
     "lsst-daf-butler",
     "lsst-sphgeom",
+    "lsst-resources",
     "lsst-felis",
 ]
 dynamic = ["version"]
