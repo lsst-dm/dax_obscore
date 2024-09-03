@@ -394,16 +394,14 @@ class SIAv2Handler:
             dataset type.
         """
         extra_dims = set()
-        region_dim_element = dimensions.region_dim
-        if not region_dim_element:
+        region_dim = dimensions.region_dimension
+        if not region_dim:
             if "exposure" in dimensions:
                 # Special case for Rubin default universe.
                 region_dim = "visit_detector_region"
                 extra_dims = {"visit"}
             else:
                 return None
-        else:
-            region_dim = region_dim_element.name
         return WhereBind(
             where=f"{region_dim}.region OVERLAPS(region)",
             bind={"region": region},
@@ -426,7 +424,7 @@ class SIAv2Handler:
             The where clause or `None` if time is not supported by this
             dataset type.
         """
-        time_dim = dimensions.timespan_dim
+        time_dim = dimensions.timespan_dimension
         if not time_dim:
             return None
         return WhereBind(where=f"{time_dim}.timespan OVERLAPS(ts)", bind={"ts": ts})
