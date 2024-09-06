@@ -169,9 +169,7 @@ class SIAv2Handler:
         instruments : `list` [ `str` ]
             All the instrument names known to this butler.
         """
-        with self.butler._query() as query:
-            records = query.dimension_records("instrument")
-            return [rec.name for rec in records]
+        return [rec.name for rec in self.butler.query_dimension_records("instrument")]
 
     def get_band_information(self, instruments: list[str], band_interval: Interval) -> dict[str, Any]:
         """Read all information from butler necessary to form a band query.
@@ -201,7 +199,7 @@ class SIAv2Handler:
         """
         matching_filters = defaultdict(set)
         matching_bands = set()
-        with self.butler._query() as query:
+        with self.butler.query() as query:
             records = query.dimension_records("physical_filter")
             if instruments:
                 instrs = ",".join(repr(ins) for ins in instruments)

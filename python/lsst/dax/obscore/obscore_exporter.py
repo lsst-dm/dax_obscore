@@ -470,7 +470,7 @@ class ObscoreExporter:
 
             where_clauses = self.config.dataset_type_constraints.get(dataset_type_name, [self.config.where])
 
-            with self.butler._query() as query:
+            with self.butler.query() as query:
                 for where_clause in where_clauses:
                     if where_clause.extra_dims:
                         results = query.join_dimensions(where_clause.extra_dims)
