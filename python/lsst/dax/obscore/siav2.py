@@ -21,10 +21,11 @@
 
 from __future__ import annotations
 
-__all__ = ["SIAv2Handler", "siav2_query"]
+__all__ = ["SIAv2Handler", "siav2_query", "siav2_query_from_raw"]
 
 import logging
 import math
+import numbers
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from typing import Any, Self
@@ -34,7 +35,8 @@ import astropy.time
 from lsst.daf.butler import Butler, DimensionGroup, Timespan
 from lsst.daf.butler.pydantic_utils import SerializableRegion, SerializableTime
 from lsst.sphgeom import Region
-from pydantic import BaseModel, field_validator
+from lsst.utils.iteration import ensure_iterable
+from pydantic import BaseModel, field_validator, model_validator
 
 from .config import ExporterConfig, WhereBind
 from .obscore_exporter import ObscoreExporter
@@ -49,6 +51,13 @@ class Interval(BaseModel):
     """Start of the interval."""
     end: float
     """End of the interval."""
+
+    @model_validator(mode="after")
+    def check_start_end(self) -> Self:
+        """Check that start comes before end."""
+        if self.start > self.end:
+            raise ValueError(f"Start of interval, {self.start}, must come before end, {self.end}")
+        return self
 
     @classmethod
     def from_string(cls, string: str) -> Self:
@@ -67,7 +76,12 @@ class Interval(BaseModel):
             The derived interval.
         """
         interval = [float(b) for b in string.split()]
-        if len(interval) == 1:
+        num_values = len(interval)
+        if num_values == 0:
+            raise ValueError(f"No values found in supplied string {string!r}")
+        if num_values > 2:
+            raise ValueError(f"Found more than two values in {string!r}")
+        if num_values == 1:
             interval.append(interval[0])
         return cls(start=interval[0], end=interval[1])
 
@@ -93,11 +107,11 @@ class Interval(BaseModel):
 class SIAv2Parameters(BaseModel):
     """Parsed versions of SIAv2 parameters."""
 
-    instrument: str | None = None
-    pos: SerializableRegion | None = None
-    time: Timespan | SerializableTime | None = None
-    band: Interval | None = None
-    exptime: Interval | None = None
+    instrument: tuple[str, ...] = ()
+    pos: tuple[SerializableRegion, ...] = ()
+    time: tuple[Timespan | SerializableTime, ...] = ()
+    band: tuple[Interval, ...] = ()
+    exptime: tuple[Interval, ...] = ()
     calib: frozenset[int] = frozenset()
 
     @field_validator("calib")
@@ -111,37 +125,41 @@ class SIAv2Parameters(BaseModel):
     @classmethod
     def from_siav2(
         cls,
-        instrument: str = "",
-        pos: str = "",
-        time: str = "",
-        band: str = "",
-        exptime: str = "",
-        calib: Iterable[int] = (),
+        instrument: Iterable[str] | str = (),
+        pos: Iterable[str] | str = (),
+        time: Iterable[str] | str = (),
+        band: Iterable[str] | str = (),
+        exptime: Iterable[str] | str = (),
+        calib: Iterable[numbers.Integral] | numbers.Integral = (),
     ) -> Self:
         parsed: dict[str, Any] = {}
         if instrument:
-            parsed["instrument"] = instrument
+            # Do not validate the values against the butler instruments.
+            parsed["instrument"] = ensure_iterable(instrument)
         if pos:
-            parsed["pos"] = Region.from_ivoa_pos(pos)
+            parsed["pos"] = [Region.from_ivoa_pos(p) for p in ensure_iterable(pos)]
         if band:
-            parsed["band"] = Interval.from_string(band)
+            parsed["band"] = [Interval.from_string(b) for b in ensure_iterable(band)]
         if exptime:
-            parsed["exptime"] = Interval.from_string(exptime)
+            parsed["exptime"] = [Interval.from_string(exp) for exp in ensure_iterable(exptime)]
         if time:
-            time_interval = Interval.from_string(time)
-            if time_interval.start == time_interval.end:
-                parsed["time"] = astropy.time.Time(time_interval.start, scale="utc", format="mjd")
-            else:
-                times: list[astropy.time.Time | None] = []
-                for t in time_interval:
-                    if not math.isfinite(t):
-                        # Timespan uses None to indicate unbounded.
-                        times.append(None)
-                    else:
-                        times.append(astropy.time.Time(float(t), scale="utc", format="mjd"))
-                parsed["time"] = Timespan(times[0], times[1])
-        if calib:
-            parsed["calib"] = frozenset(calib)
+            parsed_times = []
+            for tm in ensure_iterable(time):
+                time_interval = Interval.from_string(tm)
+                if time_interval.start == time_interval.end:
+                    parsed_times.append(astropy.time.Time(time_interval.start, scale="utc", format="mjd"))
+                else:
+                    times: list[astropy.time.Time | None] = []
+                    for t in time_interval:
+                        if not math.isfinite(t):
+                            # Timespan uses None to indicate unbounded.
+                            times.append(None)
+                        else:
+                            times.append(astropy.time.Time(float(t), scale="utc", format="mjd"))
+                    parsed_times.append(Timespan(times[0], times[1]))
+            parsed["time"] = parsed_times
+        if calib or isinstance(calib, numbers.Integral):  # 0 is allowed.
+            parsed["calib"] = frozenset(int(n) for n in ensure_iterable(calib))
         return cls.model_validate(parsed)
 
 
@@ -171,14 +189,16 @@ class SIAv2Handler:
         """
         return [rec.name for rec in self.butler.query_dimension_records("instrument")]
 
-    def get_band_information(self, instruments: list[str], band_interval: Interval) -> dict[str, Any]:
+    def get_band_information(
+        self, instruments: list[str], band_intervals: Iterable[Interval]
+    ) -> dict[str, Any]:
         """Read all information from butler necessary to form a band query.
 
         Parameters
         ----------
         instruments : `list` [ `str` ]
             Instruments that could be involved in the band query.
-        band_interval : `Interval`
+        band_intervals : `~collections.abc.Iterable` of `Interval`
             The band constraints.
 
         Returns
@@ -209,40 +229,23 @@ class SIAv2Handler:
                     spec_interval = Interval(start=spec_range[0], end=spec_range[1])
                     assert spec_range[0] is not None  # for mypy
                     assert spec_range[1] is not None
-                    if band_interval.overlaps(spec_interval):
-                        matching_filters[rec.instrument].add(rec.name)
-                        matching_bands.add(rec.band)
+                    for band_interval in band_intervals:
+                        if band_interval.overlaps(spec_interval):
+                            matching_filters[rec.instrument].add(rec.name)
+                            matching_bands.add(rec.band)
                 else:
                     _LOG.warning(
                         "Ignoring physical filter %s since it has no defined spectral range", rec.name
                     )
         return {"filters": matching_filters, "bands": matching_bands}
 
-    def process_query(
-        self,
-        instrument: str = "",
-        pos: str = "",
-        time: str = "",
-        band: str = "",
-        exptime: str = "",
-        calib: Iterable[int] = (),
-    ) -> dict[str, list[WhereBind]]:
+    def process_query(self, parameters: SIAv2Parameters) -> dict[str, list[WhereBind]]:
         """Process an SIAv2 query.
 
         Parameters
         ----------
-        instrument : `str`, optional
-            The name of the instrument to use to constrain the query.
-        pos : `str`
-            Spatial region to use for query.
-        time : `str`
-            Time or time span to use for the query, UTC MJD.
-        band : `str`
-            Wavelength range to constraint query. Units are meters.
-        exptime : `str`
-            Exposure time ranges in seconds.
-        calib : `~collections.abc.Iterable` [ `int` ]
-            One or more calibration levels.
+        parameters : `SIAv2Parameters`
+            Parameters to use for this query.
 
         Returns
         -------
@@ -252,18 +255,8 @@ class SIAv2Handler:
             present since some queries are incompatible with some dataset
             types.
         """
-        # Parse the SIAv2 parameters
-        parsed = SIAv2Parameters.from_siav2(
-            instrument=instrument,
-            pos=pos,
-            band=band,
-            time=time,
-            exptime=exptime,
-            calib=calib,
-        )
-
-        if parsed.instrument:
-            instruments = [instrument]
+        if parameters.instrument:
+            instruments = list(parameters.instrument)
         else:
             # If no explicit instrument, then all instruments could be valid.
             # Some queries like band require the instrument so ask the butler
@@ -271,15 +264,15 @@ class SIAv2Handler:
             instruments = self.get_all_instruments()
 
         band_info: dict[str, Any] = {}
-        if parsed.band:
-            band_info = self.get_band_information(instruments, parsed.band)
+        if parameters.band:
+            band_info = self.get_band_information(instruments, parameters.band)
 
         # Loop over each dataset type calculating custom query parameters.
         dataset_type_wheres = {}
         for dataset_type_name in list(self.config.dataset_types):
-            if parsed.calib:
+            if parameters.calib:
                 dataset_type_config = self.config.dataset_types[dataset_type_name]
-                if dataset_type_config.calib_level not in parsed.calib:
+                if dataset_type_config.calib_level not in parameters.calib:
                     continue
 
             wheres = []
@@ -289,8 +282,8 @@ class SIAv2Handler:
             if where is not None:
                 wheres.append(where)
 
-            if parsed.pos:
-                where = self.from_pos(parsed.pos, dims)
+            if parameters.pos:
+                where = self.from_pos(parameters.pos, dims)
                 if not where:
                     _LOG.warning(
                         "Can not support POS query for dataset type %s. Skipping it.", dataset_type_name
@@ -298,8 +291,8 @@ class SIAv2Handler:
                     continue
                 wheres.append(where)
 
-            if parsed.time:
-                where = self.from_time(parsed.time, dims)
+            if parameters.time:
+                where = self.from_time(parameters.time, dims)
                 if not where:
                     _LOG.warning(
                         "Dataset type %s has no timespan defined so assuming all datasets match.",
@@ -308,15 +301,15 @@ class SIAv2Handler:
                 else:
                     wheres.append(where)
 
-            if parsed.exptime:
-                exptime_wheres = self.from_exptime(parsed.exptime, dims)
+            if parameters.exptime:
+                exptime_wheres = self.from_exptime(parameters.exptime, dims)
                 if exptime_wheres is None:
                     _LOG.warning(
                         "Can not support EXPTIME query for dataset type %s. Skipping it.", dataset_type_name
                     )
                     continue
                 else:
-                    wheres.extend(exptime_wheres)
+                    wheres.append(exptime_wheres)
 
             if instrument_wheres:
                 where_clauses = [WhereBind.combine([iwhere] + wheres) for iwhere in instrument_wheres]
@@ -375,12 +368,12 @@ class SIAv2Handler:
             general_where = WhereBind(where="band IN (bands)", bind={"bands": band_info["bands"]})
         return instrument_wheres, general_where
 
-    def from_pos(self, region: Region, dimensions: DimensionGroup) -> WhereBind | None:
+    def from_pos(self, regions: Iterable[Region], dimensions: DimensionGroup) -> WhereBind | None:
         """Convert a region request to a butler where clause.
 
         Parameters
         ----------
-        region : `lsst.sphgeom.Region`
+        regions : `~collections.abc.Iterable` [ `lsst.sphgeom.Region` ]
             The region of interest.
         dimensions : `lsst.daf.butler.DimensionGroup`
             The dimensions for the dataset type being queried.
@@ -400,19 +393,29 @@ class SIAv2Handler:
                 extra_dims = {"visit"}
             else:
                 return None
-        return WhereBind(
-            where=f"{region_dim}.region OVERLAPS(region)",
-            bind={"region": region},
-            extra_dims=extra_dims,
-        )
+        # Must OR together all regions.
+        wheres: list[WhereBind] = []
+        for i, region in enumerate(regions):
+            wheres.append(
+                WhereBind(
+                    where=f"{region_dim}.region OVERLAPS(region{i})",
+                    bind={f"region{i}": region},
+                    extra_dims=extra_dims,
+                )
+            )
 
-    def from_time(self, ts: astropy.time.Time | Timespan, dimensions: DimensionGroup) -> WhereBind | None:
+        return WhereBind.combine(wheres, mode="OR")
+
+    def from_time(
+        self, ts: Iterable[astropy.time.Time | Timespan], dimensions: DimensionGroup
+    ) -> WhereBind | None:
         """Convert a time span to a butler where clause.
 
         Parameters
         ----------
-        ts : `astropy.time.Time` or `lsst.daf.butler.Timespan`
-            The time of interest.
+        ts : `~collections.abc.Iterable` of \
+                [ `astropy.time.Time` | `lsst.daf.butler.Timespan` ]
+            The times of interest.
         dimensions : `lsst.daf.butler.DimensionGroup`
             The dimensions for the dataset type being queried.
 
@@ -425,14 +428,20 @@ class SIAv2Handler:
         time_dim = dimensions.timespan_dimension
         if not time_dim:
             return None
-        return WhereBind(where=f"{time_dim}.timespan OVERLAPS(ts)", bind={"ts": ts})
+        wheres = []
+        for i, t in enumerate(ts):
+            wheres.append(WhereBind(where=f"{time_dim}.timespan OVERLAPS(ts{i})", bind={f"ts{i}": t}))
 
-    def from_exptime(self, exptime_interval: Interval, dimensions: DimensionGroup) -> list[WhereBind] | None:
+        return WhereBind.combine(wheres, mode="OR")
+
+    def from_exptime(
+        self, exptime_intervals: Iterable[Interval], dimensions: DimensionGroup
+    ) -> WhereBind | None:
         """Convert an exposure time interval to a butler where clause.
 
         Parameters
         ----------
-        exptime_interval : `Interval`
+        exptime_intervals : `~collections.abc.Iterable` [ `Interval` ]
             The exposure time interval of interest as two floating point UTC
             MJDs.
         dimensions : `lsst.daf.butler.DimensionGroup`
@@ -440,8 +449,8 @@ class SIAv2Handler:
 
         Returns
         -------
-        wheres : `list` [ `WhereBind` ] or `None`
-            The where clauses for the exposure times, or `None` if the dataset
+        wheres : `WhereBind` or `None`
+            The where clause for the exposure times, or `None` if the dataset
             type does not understand exposure time.
         """
         if "exposure" in dimensions:
@@ -451,25 +460,28 @@ class SIAv2Handler:
         else:
             return None
         wheres = []
-        for cmp, value in zip((">", "<"), exptime_interval, strict=True):
-            if math.isfinite(value):
-                wheres.append(WhereBind(where=f"{exp_dim}.exposure_time {cmp} {value}"))
-        return wheres
+        for exptime_interval in exptime_intervals:
+            exp_wheres = []
+            for cmp, value in zip((">", "<"), exptime_interval, strict=True):
+                if math.isfinite(value):
+                    exp_wheres.append(WhereBind(where=f"{exp_dim}.exposure_time {cmp} {value}"))
+            wheres.append(WhereBind.combine(exp_wheres))
+        return WhereBind.combine(wheres, mode="OR")
 
 
-def siav2_query(
+def siav2_query_from_raw(
     butler: Butler,
     config: ExporterConfig,
-    instrument: str = "",
-    pos: str = "",
-    time: str = "",
-    band: str = "",
-    exptime: str = "",
-    calib: Iterable[int] = (),
+    instrument: Iterable[str] = (),
+    pos: Iterable[str] = (),
+    time: Iterable[str] = (),
+    band: Iterable[str] = (),
+    exptime: Iterable[str] = (),
+    calib: Iterable[numbers.Integral] = (),
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
 ) -> astropy.io.votable.tree.VOTableFile:
-    """Export Butler datasets as ObsCore Data Model in parquet format.
+    """Run SIAv2 query with raw parameters and return results as VOTable.
 
     Parameters
     ----------
@@ -477,18 +489,57 @@ def siav2_query(
         Butler repository to query.
     config : `ExporterConfig`
         Configuration for this ObsCore system.
-    instrument : `str`
-        Name of instrument to use for query.
-    pos : `str`
-        Spatial region to use for query.
-    time : `str`
-        Time or time span to use for the query, UTC MJD.
-    band : `str`
-        Wavelength range to constraint query. Units are meters.
-    exptime : `str`
+    instrument : `~collections.abc.Iterable` [ `str` ], optional
+        The names of the instrument to use to constrain the query.
+    pos : `~collections.abc.Iterable` [ `str` ], optional
+        Spatial regions to use for query.
+    time : `~collections.abc.Iterable` [ `str` ], optional
+        Time or time spans to use for the query, UTC MJD.
+    band : `~collections.abc.Iterable` [ `str` ], optional
+        Wavelength ranges to constraint query. Units are meters.
+    exptime : `~collections.abc.Iterable` [ `str` ], optional
         Exposure time ranges in seconds.
-    calib : `~collections.abc.Iterable` [ `str` ]
-       Calibration levels to select.
+    calib : `~collections.abc.Iterable` [ `int` ]
+        One or more calibration levels to select.
+    collections : `~collections.abc.Iterable` [ `str` ]
+        Optional collection names, if provided overrides one in ``config``.
+    dataset_type : `~collections.abc.Iterable` [ `str` ]
+        Names of dataset types to include in query.
+
+    Returns
+    -------
+    votable : `astropy.io.votable.tree.VOTableFile`
+        Results of query as a VOTable.
+    """
+    # Parse the SIAv2 parameters
+    parameters = SIAv2Parameters.from_siav2(
+        instrument=instrument,
+        pos=pos,
+        band=band,
+        time=time,
+        exptime=exptime,
+        calib=calib,
+    )
+    return siav2_query(butler, config, parameters, collections, dataset_type)
+
+
+def siav2_query(
+    butler: Butler,
+    config: ExporterConfig,
+    parameters: SIAv2Parameters,
+    collections: Iterable[str] = (),
+    dataset_type: Iterable[str] = (),
+) -> astropy.io.votable.tree.VOTableFile:
+    """Run SIAv2 query with parsed parameters and return results as VOTable.
+
+    Parameters
+    ----------
+    butler : `lsst.daf.butler.Butler`
+        Butler repository to query.
+    config : `ExporterConfig`
+        Configuration for this ObsCore system.
+    parameters : `SIAv2Parameters`
+        Parsed SIAv2 parameters.
     collections : `~collections.abc.Iterable` [ `str` ]
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
@@ -509,7 +560,7 @@ def siav2_query(
         cfg.select_dataset_types(dataset_type)
 
     handler = SIAv2Handler(butler, cfg)
-    cfg.dataset_type_constraints = handler.process_query(instrument, pos, time, band, exptime, calib)
+    cfg.dataset_type_constraints = handler.process_query(parameters)
 
     # Downselect the dataset types being queried -- a missing constraint
     # means that the dataset type is being skipped.

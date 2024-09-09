@@ -24,7 +24,7 @@ from __future__ import annotations
 __all__ = ["ExporterConfig", "WhereBind"]
 
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Literal
 
 from lsst.daf.butler.registry.obscore import ObsCoreConfig
 from pydantic import BaseModel, ConfigDict, Field
@@ -43,18 +43,26 @@ class WhereBind(BaseModel):
     """Extra dimensions required to be included in query."""
 
     @classmethod
-    def combine(cls, wheres: list[WhereBind]) -> WhereBind:
+    def combine(cls, wheres: list[WhereBind], mode: Literal["AND"] | Literal["OR"] = "AND") -> WhereBind:
         """Combine multiple clauses into a single where expression.
 
         Parameters
         ----------
         wheres : `list` [ `WhereBind`]
             The user expressions to combine.
+        mode : `str`
+            Combination mode. Can be ``AND`` or ``OR``.
         """
-        where = " AND ".join(w.where for w in wheres)
-        bind = {}
+        where = f" {mode} ".join(f"({w.where})" for w in wheres)
+        bind: dict[str, Any] = {}
         extras: set[str] = set()
         for w in wheres:
+            # Warn if we are overwriting bind keys.
+            duplicates = bind.keys() & w.bind.keys()
+            if duplicates:
+                raise ValueError(
+                    f"Combining multiple WHERE clauses with reused bind parameters of {duplicates}"
+                )
             bind.update(w.bind)
             extras.update(w.extra_dims)
         return cls(where=where, bind=bind, extra_dims=extras)
