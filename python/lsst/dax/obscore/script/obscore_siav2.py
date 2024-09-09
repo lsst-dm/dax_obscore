@@ -22,12 +22,13 @@
 __all__ = ["obscore_siav2"]
 
 import logging
+import numbers
 from collections.abc import Iterable
 
 from lsst.daf.butler import Butler, Config
 
 from ..config import ExporterConfig
-from ..siav2 import siav2_query
+from ..siav2 import siav2_query_from_raw
 
 _LOG = logging.getLogger(__name__)
 
@@ -36,13 +37,12 @@ def obscore_siav2(
     repo: str,
     destination: str,
     config: str,
-    format: str,
-    instrument: str,
-    pos: str,
-    time: str,
-    band: str,
-    exptime: str,
-    calib: Iterable[int],
+    instrument: Iterable[str],
+    pos: Iterable[str],
+    time: Iterable[str],
+    band: Iterable[str],
+    exptime: Iterable[str],
+    calib: Iterable[numbers.Integral],
     collections: Iterable[str],
     dataset_type: Iterable[str],
 ) -> None:
@@ -56,8 +56,6 @@ def obscore_siav2(
         Location of the output file.
     config : `str`
         Location of the configuration file.
-    format : `str`
-        Output format, 'csv' or 'parquet'.
     instrument : `str`
         Name of instrument to use for query.
     pos : `str`
@@ -80,5 +78,7 @@ def obscore_siav2(
     config_data = Config(config)
     cfg = ExporterConfig.model_validate(config_data)
 
-    votable = siav2_query(butler, cfg, instrument, pos, time, band, exptime, calib, collections, dataset_type)
+    votable = siav2_query_from_raw(
+        butler, cfg, instrument, pos, time, band, exptime, calib, collections, dataset_type
+    )
     votable.to_xml(destination)

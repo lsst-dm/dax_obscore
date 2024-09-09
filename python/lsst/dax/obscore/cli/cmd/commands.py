@@ -160,12 +160,6 @@ def update_table(*args: Any, **kwargs: Any) -> None:
     help="Location of the configuration file in YAML format, path or URL.",
     required=True,
 )
-@click.option(
-    "--format",
-    help="Output format, one of 'parquet', 'votable', or 'csv'; default: votable.",
-    type=click.Choice(["csv", "parquet", "votable"]),
-    default="votable",
-)
 @dataset_type_option(
     help=(
         "Comma-separated list of dataset types. "
@@ -176,23 +170,27 @@ def update_table(*args: Any, **kwargs: Any) -> None:
 @click.option(
     "--instrument",
     help="Name of instrument to use in query",
-    default="",
+    type=str,
+    multiple=True,
 )
 @click.option(
     "--pos",
     help="IVOA POS region to use to restrict results.",
-    default="",
+    type=str,
+    multiple=True,
 )
 @click.option(
     "--time",
     help="Time or timespan to use to constraint the query. Uses MJD UTC.",
-    default="",
+    type=str,
+    multiple=True,
 )
-@click.option("--band", help="Wavelength range to constrain query. Units of meters.", default="")
+@click.option("--band", help="Wavelength range to constrain query. Units of meters.", type=str, multiple=True)
 @click.option(
     "--exptime",
     help="Exposure time ranges in seconds.",
-    default="",
+    type=str,
+    multiple=True,
 )
 @click.option(
     "--calib",
