@@ -289,6 +289,7 @@ class ObscoreExporter:
         self.record_factory = RecordFactory(
             config, schema, universe, spatial_plugins, exposure_region_factory
         )
+        self.overflow = False
 
     def to_parquet(self, output: str) -> None:
         """Export Butler datasets as ObsCore Data Model in parquet format.
@@ -320,8 +321,13 @@ class ObscoreExporter:
                 for record_batch in self._make_record_batches(self.config.batch_size):
                     writer.write_batch(record_batch)
 
-    def to_votable(self) -> astropy.io.votable.tree.VOTableFile:
+    def to_votable(self, limit: int | None = None) -> astropy.io.votable.tree.VOTableFile:
         """Run the export and return the results as a VOTable instance.
+
+        Parameters
+        ----------
+        limit : `int` or `None`, optional
+            Maximum number of records to return. If `None` there is no limit.
 
         Returns
         -------
@@ -395,7 +401,7 @@ class ObscoreExporter:
 
         chunks = []
         n_rows = 0
-        for record_batch in self._make_record_batches(self.config.batch_size):
+        for record_batch in self._make_record_batches(self.config.batch_size, limit=limit):
             pydict = record_batch.to_pydict()
             columns = []
             for label, column in pydict.items():
@@ -408,23 +414,32 @@ class ObscoreExporter:
             array = ma.array(np.asarray(chunk), mask=np.asarray(chunk.mask))
             chunks.append(array)
 
+        # Report any overflow.
+        query_status = "OVERFLOW" if self.overflow else "OK"
+        info = astropy.io.votable.tree.Info(name="QUERY_STATUS", value=query_status)
+        resource.infos.append(info)
+
         # Combine all the chunks.
         if chunks:
             table0.array = ma.hstack(chunks)
 
         # Write the output file.
-        _LOG.info("Got %d result%s", n_rows, "" if n_rows == 1 else "s")
+        _LOG.info(
+            "Got %d result%s%s", n_rows, "" if n_rows == 1 else "s", " (overflow)" if self.overflow else ""
+        )
         return votable
 
-    def to_votable_file(self, output: str) -> None:
+    def to_votable_file(self, output: str, limit: int | None = None) -> None:
         """Export Butler datasets as ObsCore data model in VOTable format.
 
         Parameters
         ----------
         output : `str`
             Location of the output file.
+        limit : `int` or `None`
+            Limit on number of records to return. `None` means no limit.
         """
-        votable = self.to_votable()
+        votable = self.to_votable(limit=limit)
         votable.to_xml(output)
 
     def _make_schema(self, table_spec: ddl.TableSpec) -> Schema:
@@ -451,9 +466,14 @@ class ObscoreExporter:
 
         return pyarrow.schema(schema)
 
-    def _make_record_batches(self, batch_size: int = 10_000) -> Iterator[RecordBatch]:
+    def _make_record_batches(
+        self, batch_size: int = 10_000, limit: int | None = None
+    ) -> Iterator[RecordBatch]:
         """Generate batches of records to save to a file."""
         batch = _BatchCollector(self.schema)
+
+        # Reset overflow flag.
+        self.overflow = False
 
         collections: Any = self.config.collections
         if not collections:
@@ -464,10 +484,19 @@ class ObscoreExporter:
         assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
         backend = SqlQueryBackend(registry._db, registry._managers, registry.dimension_record_cache)
 
+        if limit is None:
+            unlimited = True
+        elif limit == 0:
+            # Return immediately.
+            return
+        else:
+            unlimited = False
+            # Always ask for one extra to allow the overflow detection.
+            query_limit = abs(limit) + 1
+
         context = backend.context()
         for dataset_type_name in self.config.dataset_types:
             _LOG.verbose("Querying datasets for dataset type %s", dataset_type_name)
-
             where_clauses = self.config.dataset_type_constraints.get(dataset_type_name, [self.config.where])
 
             with self.butler.query() as query:
@@ -483,6 +512,9 @@ class ObscoreExporter:
 
                     refs = results.datasets(dataset_type_name, collections=collections, find_first=True)
 
+                    if not unlimited:
+                        refs = refs.limit(query_limit)
+
                     # need dimension records
                     count = 0
                     for ref in refs.with_dimension_records():
@@ -495,13 +527,34 @@ class ObscoreExporter:
                             continue
 
                         count += 1
+                        if not unlimited and count == query_limit:
+                            # Hit the +1 so should not add this to the batch.
+                            _LOG.debug("Got one more than requested limit so dropping final record.")
+                            self.overflow = True
+                            break
 
                         batch.add_to_batch(record)
                         if batch.size >= batch_size:
                             _LOG.debug("Saving next record batch, size=%s", batch.size)
                             yield batch.make_record_batch()
 
+                    if not unlimited:
+                        query_limit -= count
+                    if self.overflow:
+                        # We counted one too many so adjust for the log
+                        # message.
+                        count -= 1
+
                     _LOG.info("Copied %d records from dataset type %s", count, dataset_type_name)
+
+                    if self.overflow:
+                        # No more queries need to run.
+                        # This breaks out one level of nesting.
+                        break
+
+                if self.overflow:
+                    # Stop further dataset type queries.
+                    break
 
         # Final batch if anything is there
         if batch.size > 0:

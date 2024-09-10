@@ -23,7 +23,6 @@ from __future__ import annotations
 
 __all__ = ["SIAv2Handler", "siav2_query", "siav2_query_from_raw"]
 
-import logging
 import math
 import numbers
 from collections import defaultdict
@@ -36,12 +35,13 @@ from lsst.daf.butler import Butler, DimensionGroup, Timespan
 from lsst.daf.butler.pydantic_utils import SerializableRegion, SerializableTime
 from lsst.sphgeom import Region, UnionRegion
 from lsst.utils.iteration import ensure_iterable
+from lsst.utils.logging import getLogger
 from pydantic import BaseModel, field_validator, model_validator
 
 from .config import ExporterConfig, WhereBind
 from .obscore_exporter import ObscoreExporter
 
-_LOG = logging.getLogger(__name__)
+_LOG = getLogger(__name__)
 
 
 class Interval(BaseModel):
@@ -140,6 +140,13 @@ class SIAv2Parameters(BaseModel):
         if dptype - valid_dptype:
             raise ValueError(f"DPTYPE values can only be ({valid_dptype}) but got {dptype}")
         return dptype
+
+    @field_validator("maxrec")
+    @classmethod
+    def check_maxrec(cls, maxrec: int) -> int:
+        if maxrec < 0:
+            raise ValueError(f"MAXREC parameter must be >= 0 but got {maxrec}")
+        return maxrec
 
     @classmethod
     def from_siav2(
@@ -666,6 +673,8 @@ def siav2_query(
     if dataset_type:
         cfg.select_dataset_types(dataset_type)
 
+    _LOG.verbose("Received parameters: %s", parameters)
+
     handler = SIAv2Handler(butler, cfg)
     cfg.dataset_type_constraints = handler.process_query(parameters)
 
@@ -674,4 +683,5 @@ def siav2_query(
     cfg.select_dataset_types(cfg.dataset_type_constraints.keys())
 
     exporter = ObscoreExporter(butler, cfg)
-    return exporter.to_votable()
+
+    return exporter.to_votable(limit=parameters.maxrec)

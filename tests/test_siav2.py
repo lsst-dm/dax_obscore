@@ -139,6 +139,12 @@ class SIAv2ParametersTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             SIAv2Parameters.from_siav2(dptype="spectrum")
 
+    def test_maxrec(self):
+        p = SIAv2Parameters.from_siav2(maxrec=5)
+        self.assertEqual(p.maxrec, 5)
+        with self.assertRaises(ValueError):
+            SIAv2Parameters.from_siav2(maxrec=-5)
+
 
 if __name__ == "__main__":
     unittest.main()
