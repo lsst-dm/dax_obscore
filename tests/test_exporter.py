@@ -250,6 +250,13 @@ class TestCase(unittest.TestCase):
         for value in table0["s_region"]:
             self.assertTrue(value.startswith("POLYGON "))
 
+        # Now with a limit.
+        xprtr.to_votable_file(output, limit=5)
+        votable = astropy.io.votable.parse(output)
+        tables = list(votable.iter_tables())
+        table0 = tables[0].array
+        self.assertEqual(len(table0), 5, str(table0))
+
 
 if __name__ == "__main__":
     unittest.main()
