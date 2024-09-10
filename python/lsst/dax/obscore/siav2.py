@@ -27,14 +27,14 @@ import logging
 import math
 import numbers
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from typing import Any, Self
 
 import astropy.io.votable
 import astropy.time
 from lsst.daf.butler import Butler, DimensionGroup, Timespan
 from lsst.daf.butler.pydantic_utils import SerializableRegion, SerializableTime
-from lsst.sphgeom import Region
+from lsst.sphgeom import Region, UnionRegion
 from lsst.utils.iteration import ensure_iterable
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -368,7 +368,7 @@ class SIAv2Handler:
             general_where = WhereBind(where="band IN (bands)", bind={"bands": band_info["bands"]})
         return instrument_wheres, general_where
 
-    def from_pos(self, regions: Iterable[Region], dimensions: DimensionGroup) -> WhereBind | None:
+    def from_pos(self, regions: Sequence[Region], dimensions: DimensionGroup) -> WhereBind | None:
         """Convert a region request to a butler where clause.
 
         Parameters
@@ -393,18 +393,22 @@ class SIAv2Handler:
                 extra_dims = {"visit"}
             else:
                 return None
-        # Must OR together all regions.
-        wheres: list[WhereBind] = []
-        for i, region in enumerate(regions):
-            wheres.append(
-                WhereBind(
-                    where=f"{region_dim}.region OVERLAPS(region{i})",
-                    bind={f"region{i}": region},
-                    extra_dims=extra_dims,
-                )
-            )
 
-        return WhereBind.combine(wheres, mode="OR")
+        if not regions:
+            # In case we are called with no regions.
+            return WhereBind(where="")
+
+        # Must OR together all regions. We can do this in sphgeom directly.
+        # Butler query system itself can not OR regions.
+        region = regions[0]
+        if len(regions) > 1:
+            for r in regions[1:]:
+                region = UnionRegion(region, r)
+        return WhereBind(
+            where=f"{region_dim}.region OVERLAPS(region)",
+            bind={"region": region},
+            extra_dims=extra_dims,
+        )
 
     def from_time(
         self, ts: Iterable[astropy.time.Time | Timespan], dimensions: DimensionGroup
