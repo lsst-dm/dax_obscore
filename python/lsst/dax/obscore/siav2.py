@@ -528,12 +528,24 @@ class SIAv2Handler:
 def siav2_query_from_raw(
     butler: Butler,
     config: ExporterConfig,
-    instrument: Iterable[str] = (),
-    pos: Iterable[str] = (),
-    time: Iterable[str] = (),
-    band: Iterable[str] = (),
-    exptime: Iterable[str] = (),
-    calib: Iterable[numbers.Integral] = (),
+    *,
+    pos: Iterable[str] | str = (),
+    band: Iterable[str] | str = (),
+    time: Iterable[str] | str = (),
+    pol: Iterable[str] | str = (),
+    fov: Iterable[str] | str = (),
+    spatres: Iterable[str] | str = (),
+    specrp: Iterable[str] | str = (),
+    exptime: Iterable[str] | str = (),
+    timeres: Iterable[str] | str = (),
+    id: Iterable[str] | str = (),
+    collection: Iterable[str] | str = (),
+    facility: Iterable[str] | str = (),
+    instrument: Iterable[str] | str = (),
+    dptype: Iterable[str] | str = (),
+    calib: Iterable[numbers.Integral] | numbers.Integral = (),
+    target: Iterable[str] | str = (),
+    maxrec: str | numbers.Integral | None = None,
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
 ) -> astropy.io.votable.tree.VOTableFile:
@@ -545,22 +557,49 @@ def siav2_query_from_raw(
         Butler repository to query.
     config : `ExporterConfig`
         Configuration for this ObsCore system.
-    instrument : `~collections.abc.Iterable` [ `str` ], optional
-        The names of the instrument to use to constrain the query.
     pos : `~collections.abc.Iterable` [ `str` ], optional
-        Spatial regions to use for query.
-    time : `~collections.abc.Iterable` [ `str` ], optional
-        Time or time spans to use for the query, UTC MJD.
+        Spatial regions to use for query. As POS region strings.
     band : `~collections.abc.Iterable` [ `str` ], optional
         Wavelength ranges to constraint query. Units are meters.
+    time : `~collections.abc.Iterable` [ `str` ], optional
+        Time or time spans to use for the query, UTC MJD.
+    pol : `~collections.abc.Iterable` [ `str` ], optional
+        Polarizations to search for.
+    fov : `~collections.abc.Iterable` [ `str` ], optional
+        Range of field of view to search.
+    spatres : `~collections.abc.Iterable` [ `str` ], optional
+        Range of spatial resolutions.
+    specrp : `~collections.abc.Iterable` [ `str` ], optional
+        Range of spectral resolving powers.
     exptime : `~collections.abc.Iterable` [ `str` ], optional
         Exposure time ranges in seconds.
+    timeres : `~collections.abc.Iterable` [ `str` ], optional
+        Range of temporal resolutions.
+    id : `~collections.abc.Iterable` [ `str` ], optional
+        IVO identifier of specific datasets.
+    collection : `~collections.abc.Iterable` [ `str` ], optional
+        ObsCore collections. It is unclear whether these are Butler collections
+        or more abstract ObsCore collections that map to specific Butler
+        collections.
+    facility : `~collections.abc.Iterable` [ `str` ], optional
+        Facility names. Currently there can only be one facility per
+        ObsCore configuration of a butler so this parameter is unlikely
+        to be useful.
+    instrument : `~collections.abc.Iterable` [ `str` ], optional
+        The names of the instrument to use to constrain the query.
+    dptype : `~collections.abc.Iterable` [ `str` ], optional
+        ObsCore data product type. Can be only ``image`` or ``cube``.
     calib : `~collections.abc.Iterable` [ `int` ]
-        One or more calibration levels to select.
+        One or more calibration levels to select. Can be only 0, 1, 2, 3.
+    target : `~collections.abc.Iterable` [ `str` ], optional
+        Target names.
+    maxrec : `str`, `numbers.Integral`, `None`, optional
+        Maximum number of records to return. Unlimited if `None`. 0 means
+        metadata will be returned but no records.
     collections : `~collections.abc.Iterable` [ `str` ]
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
-        Names of dataset types to include in query.
+        Names of Butler dataset types to include in query.
 
     Returns
     -------
@@ -573,8 +612,19 @@ def siav2_query_from_raw(
         pos=pos,
         band=band,
         time=time,
+        pol=pol,
+        fov=fov,
+        spatres=spatres,
+        specrp=specrp,
         exptime=exptime,
+        timeres=timeres,
+        id=id,
+        collection=collection,
+        facility=facility,
         calib=calib,
+        dptype=dptype,
+        target=target,
+        maxrec=maxrec,
     )
     return siav2_query(butler, config, parameters, collections, dataset_type)
 
