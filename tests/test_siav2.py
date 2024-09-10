@@ -62,12 +62,17 @@ class SIAv2IntervalTestCase(unittest.TestCase):
 class SIAv2ParametersTestCase(unittest.TestCase):
     """Test parameter parsing."""
 
-    def test_instrument(self):
-        for inst in ("HSC", ["LSSTCam", "LATISS"], []):
-            p = SIAv2Parameters.from_siav2(instrument=inst)
-            if isinstance(inst, str):
-                inst = [inst]
-            self.assertCountEqual(p.instrument, inst)
+    def test_strings(self):
+        # String based items without validation.
+        for param in ("pol", "instrument", "collection", "facility", "target", "id"):
+            for test in ("HSC", ["LSSTCam", "LATISS"], []):
+                kwargs = {param: test}
+                p = SIAv2Parameters.from_siav2(**kwargs)
+                self.assertCountEqual(getattr(p, param), tuple(ensure_iterable(test)))
+
+            with self.assertRaises(ValueError):
+                kwargs = {param: 42}
+                SIAv2Parameters.from_siav2(**kwargs)
 
     def test_pos(self):
         for pos in ("CIRCLE 0 0 10", ["RANGE 1 2 3 4", "POLYGON 12.0 34.0 14.0 35.0 14. 36.0 12.0 35.0"], []):
@@ -104,9 +109,20 @@ class SIAv2ParametersTestCase(unittest.TestCase):
             SIAv2Parameters.from_siav2(time="wrong")
 
     def test_intervals(self):
-        p = SIAv2Parameters.from_siav2(band="-Inf 42", exptime="0 30")
+        p = SIAv2Parameters.from_siav2(
+            band="-Inf 42",
+            exptime="0 30",
+            fov=["1.0 2.0"],
+            spatres="0.1 0.2",
+            specrp="10000 20000",
+            timeres=["1.0 2.0", "-Inf 1.0"],
+        )
         self.assertEqual(p.band[0], Interval(start=-math.inf, end=42.0))
         self.assertEqual(p.exptime[0], Interval(start=0, end=30.0))
+        self.assertEqual(p.fov[0], Interval(start=1.0, end=2.0))
+        self.assertEqual(p.spatres[0], Interval(start=0.1, end=0.2))
+        self.assertEqual(p.specrp[0], Interval(start=10000, end=20000))
+        self.assertEqual(p.timeres, (Interval(start=1.0, end=2.0), Interval(start=-math.inf, end=1.0)))
 
     def test_calib(self):
         p = SIAv2Parameters.from_siav2(calib=(1, 2, 3))
@@ -116,6 +132,12 @@ class SIAv2ParametersTestCase(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             SIAv2Parameters.from_siav2(calib=4)
+
+    def test_dptype(self):
+        p = SIAv2Parameters.from_siav2(dptype=["image", "cube"])
+        self.assertEqual(p.dptype, frozenset(["image", "cube"]))
+        with self.assertRaises(ValueError):
+            SIAv2Parameters.from_siav2(dptype="spectrum")
 
 
 if __name__ == "__main__":
