@@ -626,13 +626,14 @@ def siav2_query_from_raw(
         target=target,
         maxrec=maxrec,
     )
-    return siav2_query(butler, config, parameters, collections, dataset_type)
+    return siav2_query(butler, config, parameters, collections=collections, dataset_type=dataset_type)
 
 
 def siav2_query(
     butler: Butler,
     config: ExporterConfig,
     parameters: SIAv2Parameters,
+    *,
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
 ) -> astropy.io.votable.tree.VOTableFile:
