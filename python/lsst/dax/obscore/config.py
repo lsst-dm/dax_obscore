@@ -53,6 +53,8 @@ class WhereBind(BaseModel):
         mode : `str`
             Combination mode. Can be ``AND`` or ``OR``.
         """
+        if len(wheres) == 1:
+            return wheres[0]
         where = f" {mode} ".join(f"({w.where})" for w in wheres)
         bind: dict[str, Any] = {}
         extras: set[str] = set()
