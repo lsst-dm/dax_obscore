@@ -107,12 +107,23 @@ class Interval(BaseModel):
 class SIAv2Parameters(BaseModel):
     """Parsed versions of SIAv2 parameters."""
 
-    instrument: tuple[str, ...] = ()
     pos: tuple[SerializableRegion, ...] = ()
-    time: tuple[Timespan | SerializableTime, ...] = ()
     band: tuple[Interval, ...] = ()
+    time: tuple[Timespan | SerializableTime, ...] = ()
+    pol: tuple[str, ...] = ()
+    fov: tuple[Interval, ...] = ()
+    spatres: tuple[Interval, ...] = ()
+    specrp: tuple[Interval, ...] = ()
     exptime: tuple[Interval, ...] = ()
+    timeres: tuple[Interval, ...] = ()
+    id: tuple[str, ...] = ()  # No validation yet.
+    collection: tuple[str, ...] = ()
+    facility: tuple[str, ...] = ()
+    instrument: tuple[str, ...] = ()
+    dptype: frozenset[str] = frozenset()
     calib: frozenset[int] = frozenset()
+    target: tuple[str, ...] = ()
+    maxrec: int | None = None
 
     @field_validator("calib")
     @classmethod
@@ -122,15 +133,34 @@ class SIAv2Parameters(BaseModel):
             raise ValueError(f"Calib levels can only be ({valid_calib}) but got {calib}")
         return calib
 
+    @field_validator("dptype")
+    @classmethod
+    def check_dptype(cls, dptype: frozenset[str]) -> frozenset[str]:
+        valid_dptype = {"image", "cube"}
+        if dptype - valid_dptype:
+            raise ValueError(f"DPTYPE values can only be ({valid_dptype}) but got {dptype}")
+        return dptype
+
     @classmethod
     def from_siav2(
         cls,
-        instrument: Iterable[str] | str = (),
         pos: Iterable[str] | str = (),
-        time: Iterable[str] | str = (),
         band: Iterable[str] | str = (),
+        time: Iterable[str] | str = (),
+        pol: Iterable[str] | str = (),
+        fov: Iterable[str] | str = (),
+        spatres: Iterable[str] | str = (),
+        specrp: Iterable[str] | str = (),
         exptime: Iterable[str] | str = (),
+        timeres: Iterable[str] | str = (),
+        id: Iterable[str] | str = (),
+        collection: Iterable[str] | str = (),
+        facility: Iterable[str] | str = (),
+        instrument: Iterable[str] | str = (),
+        dptype: Iterable[str] | str = (),
         calib: Iterable[numbers.Integral] | numbers.Integral = (),
+        target: Iterable[str] | str = (),
+        maxrec: str | numbers.Integral | None = None,
     ) -> Self:
         parsed: dict[str, Any] = {}
         if instrument:
@@ -160,6 +190,28 @@ class SIAv2Parameters(BaseModel):
             parsed["time"] = parsed_times
         if calib or isinstance(calib, numbers.Integral):  # 0 is allowed.
             parsed["calib"] = frozenset(int(n) for n in ensure_iterable(calib))
+        if pol:
+            parsed["pol"] = ensure_iterable(pol)
+        if fov:
+            parsed["fov"] = [Interval.from_string(val) for val in ensure_iterable(fov)]
+        if spatres:
+            parsed["spatres"] = [Interval.from_string(val) for val in ensure_iterable(spatres)]
+        if specrp:
+            parsed["specrp"] = [Interval.from_string(val) for val in ensure_iterable(specrp)]
+        if timeres:
+            parsed["timeres"] = [Interval.from_string(val) for val in ensure_iterable(timeres)]
+        if id:
+            parsed["id"] = ensure_iterable(id)
+        if collection:
+            parsed["collection"] = ensure_iterable(collection)
+        if facility:
+            parsed["facility"] = ensure_iterable(facility)
+        if dptype:
+            parsed["dptype"] = ensure_iterable(dptype)
+        if target:
+            parsed["target"] = ensure_iterable(target)
+        if maxrec is not None:
+            parsed["maxrec"] = int(maxrec)
         return cls.model_validate(parsed)
 
 
