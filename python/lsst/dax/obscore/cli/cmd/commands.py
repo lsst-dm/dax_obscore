@@ -198,6 +198,11 @@ def update_table(*args: Any, **kwargs: Any) -> None:
     multiple=True,
     type=int,
 )
+@click.option(
+    "--maxrec",
+    help="Maximum number of records to return. 0 means no records.",
+    type=int,
+)
 @options_file_option()
 def siav2(*args: Any, **kwargs: Any) -> None:
     """Export Butler datasets as ObsCore Data Model in parquet format."""

@@ -43,6 +43,7 @@ def obscore_siav2(
     band: Iterable[str],
     exptime: Iterable[str],
     calib: Iterable[numbers.Integral],
+    maxrec: numbers.Integral | str | None,
     collections: Iterable[str],
     dataset_type: Iterable[str],
 ) -> None:
@@ -68,6 +69,8 @@ def obscore_siav2(
         Exposure time ranges in seconds.
     calib : `~collections.abc.Iterable` [ `int` ]
         Calibration level to select. All are selected if none specified.
+    maxrec : `int` or `str` or `None`
+        Maximum number of records to return. `None` is unlimited.
     collections : `~collections.abc.Iterable` [ `str` ]
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
@@ -89,5 +92,6 @@ def obscore_siav2(
         calib=calib,
         collections=collections,
         dataset_type=dataset_type,
+        maxrec=maxrec,
     )
     votable.to_xml(destination)
