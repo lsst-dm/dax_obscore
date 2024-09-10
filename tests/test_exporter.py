@@ -26,11 +26,11 @@ import unittest
 import astropy.io.votable
 import pyarrow
 import pyarrow.parquet
-from lsst.daf.butler import Butler, Config
 from lsst.daf.butler.registry.obscore import DatasetTypeConfig
 from lsst.daf.butler.registry.obscore._schema import _STATIC_COLUMNS
 from lsst.daf.butler.tests.utils import makeTestTempDir, removeTestTempDir
 from lsst.dax.obscore import ExporterConfig, ObscoreExporter
+from lsst.dax.obscore.tests import DaxObsCoreTestMixin
 
 TESTDIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -38,7 +38,7 @@ TESTDIR = os.path.abspath(os.path.dirname(__file__))
 _STANDARD_COLUMNS = tuple(col.name for col in _STATIC_COLUMNS) + ("s_dec", "s_ra", "s_fov", "s_region")
 
 
-class TestCase(unittest.TestCase):
+class TestCase(unittest.TestCase, DaxObsCoreTestMixin):
     """Tests of ObscoreExporter"""
 
     def setUp(self):
@@ -46,48 +46,6 @@ class TestCase(unittest.TestCase):
 
     def tearDown(self):
         removeTestTempDir(self.root)
-
-    def make_butler(self) -> Butler:
-        """Return new Butler instance on each call."""
-        config = Config()
-        config["root"] = self.root
-        config["registry", "db"] = f"sqlite:///{self.root}/gen3.sqlite3"
-        butler = Butler.from_config(
-            Butler.makeRepo(self.root, config=config), writeable=True, without_datastore=True
-        )
-        return butler
-
-    def make_export_config(self):
-        """Prepare configuration for exporter"""
-        config = ExporterConfig(
-            version=0,
-            facility_name="Subaru",
-            obs_collection="obs-collection",
-            collections=["HSC/runs/ci_hsc"],
-            use_butler_uri=False,
-            dataset_types={
-                "_mock_calexp": DatasetTypeConfig(
-                    calib_level=2,
-                    dataproduct_type="image",
-                    dataproduct_subtype="lsst.calexp",
-                    obs_id_fmt="{records[visit].name}",
-                    datalink_url_fmt="http://datalink.org/{obs_id}",
-                ),
-                "_mock_deepCoadd": DatasetTypeConfig(
-                    calib_level=3,
-                    dataproduct_type="image",
-                    dataproduct_subtype="lsst.deepCoadd",
-                    obs_id_fmt="{skymap}-{tract}-{patch}",
-                    datalink_url_fmt="http://datalink.org/{id}",
-                ),
-            },
-            spectral_ranges={
-                "r": [552.0e-9, 691.0e-9],
-                "i": [691.0e-9, 818.0e-9],
-            },
-            extra_columns={"day_obs": {"template": "{records[visit].day_obs}", "type": "int"}},
-        )
-        return config
 
     def test_schema(self):
         """Check how schema is constructed"""
