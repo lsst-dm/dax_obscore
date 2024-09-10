@@ -79,6 +79,15 @@ def obscore_siav2(
     cfg = ExporterConfig.model_validate(config_data)
 
     votable = siav2_query_from_raw(
-        butler, cfg, instrument, pos, time, band, exptime, calib, collections, dataset_type
+        butler,
+        cfg,
+        instrument=instrument,
+        pos=pos,
+        time=time,
+        band=band,
+        exptime=exptime,
+        calib=calib,
+        collections=collections,
+        dataset_type=dataset_type,
     )
     votable.to_xml(destination)
