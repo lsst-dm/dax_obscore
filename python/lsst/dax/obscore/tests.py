@@ -53,6 +53,13 @@ class DaxObsCoreTestMixin:
             collections=["HSC/runs/ci_hsc"],
             use_butler_uri=False,
             dataset_types={
+                "raw": DatasetTypeConfig(
+                    calib_level=1,
+                    dataproduct_type="image",
+                    dataproduct_subtype="lsst.raw",
+                    obs_id_fmt="{records[exposure].obs_id}",
+                    datalink_url_fmt="http://datalink.org/{obs_id}",
+                ),
                 "_mock_calexp": DatasetTypeConfig(
                     calib_level=2,
                     dataproduct_type="image",
@@ -71,6 +78,8 @@ class DaxObsCoreTestMixin:
             spectral_ranges={
                 "r": [552.0e-9, 691.0e-9],
                 "i": [691.0e-9, 818.0e-9],
+                "HSC-R": [543.0e-9, 693.0e-9],
+                "HSC-I": [690.0e-9, 842.0e-9],
             },
             extra_columns={"day_obs": {"template": "{records[visit].day_obs}", "type": "int"}},
         )
