@@ -20,13 +20,18 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import math
+import os
 import unittest
 
 import lsst.sphgeom
 from astropy.time import Time
 from lsst.daf.butler import Timespan
-from lsst.dax.obscore.siav2 import Interval, SIAv2Parameters
+from lsst.daf.butler.tests.utils import makeTestTempDir, removeTestTempDir
+from lsst.dax.obscore.siav2 import Interval, SIAv2Parameters, siav2_query_from_raw
+from lsst.dax.obscore.tests import DaxObsCoreTestMixin
 from lsst.utils.iteration import ensure_iterable
+
+TESTDIR = os.path.abspath(os.path.dirname(__file__))
 
 
 class SIAv2IntervalTestCase(unittest.TestCase):
@@ -144,6 +149,58 @@ class SIAv2ParametersTestCase(unittest.TestCase):
         self.assertEqual(p.maxrec, 5)
         with self.assertRaises(ValueError):
             SIAv2Parameters.from_siav2(maxrec=-5)
+
+
+class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
+    """Tests of SIAv2 queries.r"""
+
+    def setUp(self):
+        self.root = makeTestTempDir(TESTDIR)
+        self.butler = self.make_butler()
+        self.butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
+        self.config = self.make_export_config()
+
+    def tearDown(self):
+        removeTestTempDir(self.root)
+
+    def assertVOTable(self, votable, n_rows) -> None:
+        """Check a VOTable."""
+        tables = list(votable.iter_tables())
+        self.assertEqual(len(tables), 1)
+        table0 = tables[0].array
+        self.assertEqual(len(table0), n_rows, str(table0))
+
+    def test_query(self):
+        """Test that an SIAv2 query completes."""
+        # If you query an unknown instrument using IN butler is not helpful:
+        # InvalidQueryError: Query 'where' expression references a dimension
+        #    dependent on instrument without constraining it directly.
+        # Butler correctly returns 0 records if just the unknown instrument
+        # is specified.
+        for kwargs, expected in (
+            ({"instrument": "HSC"}, 68),
+            ({"instrument": "LATISS"}, 2),  # coadds do not know their instrument.
+            ({"pos": "CIRCLE 320.851 -0.3 0.001"}, 28),
+            ({"band": "700e-9"}, 33),
+            ({"band": ("700e-9", "500e-9 600e-9")}, 68),
+            ({"band": ("700e-9", "500e-9 600e-9"), "calib": {2}}, 33),
+            ({"time": "56460.0 56460.57"}, 36),
+            ({"time": ("56460.0 56460.57", "60000 +Inf")}, 36),
+            ({"time": "56460.0 56460.57", "pos": "CIRCLE 320.851 -0.3 0.001"}, 16),
+            ({"time": "56460.0 56460.57", "pos": "CIRCLE 320.851 -0.3 0.001", "calib": {2}}, 7),
+            ({"maxrec": 5}, 5),
+            ({"maxrec": 0}, 0),
+            ({"exptime": "0 35"}, 66),
+            ({"exptime": ("0 5", "40 +Inf")}, 0),
+            ({"calib": {2}}, 33),
+            ({"calib": {3}}, 2),
+            ({"calib": {1}}, 33),
+        ):
+            with self.subTest(kwargs=kwargs, expected=expected):
+                votable = siav2_query_from_raw(
+                    self.butler, self.config, collections=["HSC/runs/ci_hsc", "HSC/raw/all"], **kwargs
+                )
+                self.assertVOTable(votable, expected)
 
 
 if __name__ == "__main__":
