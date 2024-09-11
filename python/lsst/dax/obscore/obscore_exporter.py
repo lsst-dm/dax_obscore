@@ -477,7 +477,7 @@ class ObscoreExporter:
 
         collections: Any = self.config.collections
         if not collections:
-            collections = "*"
+            raise ValueError("No collections specified. Querying all collections is not allowed.")
 
         # Have to use non-public Registry interface.
         registry = self.butler._registry  # type: ignore
