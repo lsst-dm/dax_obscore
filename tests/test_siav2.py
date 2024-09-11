@@ -172,6 +172,8 @@ class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
 
     def test_query(self):
         """Test that an SIAv2 query completes."""
+        config = self.config
+        config.batch_size = 3
         # If you query an unknown instrument using IN butler is not helpful:
         # InvalidQueryError: Query 'where' expression references a dimension
         #    dependent on instrument without constraining it directly.
@@ -199,6 +201,13 @@ class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
             with self.subTest(kwargs=kwargs, expected=expected):
                 votable = siav2_query_from_raw(
                     self.butler, self.config, collections=["HSC/runs/ci_hsc", "HSC/raw/all"], **kwargs
+                )
+                self.assertVOTable(votable, expected)
+
+                # Again with a very small batch size to check that looping
+                # works.
+                votable = siav2_query_from_raw(
+                    self.butler, config, collections=["HSC/runs/ci_hsc", "HSC/raw/all"], **kwargs
                 )
                 self.assertVOTable(votable, expected)
 
