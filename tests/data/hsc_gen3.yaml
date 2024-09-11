@@ -796,6 +796,42 @@ data:
     visit: 904010
     region: !<lsst.sphgeom.ConvexPolygon>
       encoded: 70f57b18d200dae83f88c957e3c728e4bf57956c59f8f655bf10d2e89223d0e83f27199299ea34e4bf2eda1fd19ad856bf130ea46075cfe83f2c8c45399a35e4bfcb20eae43f7974bf36cdb83a28d9e83f2f7f15cead29e4bfe6471b4d091774bf
+- type: dimension
+  element: visit_definition
+  records:
+  - instrument: HSC
+    exposure: 903334
+    visit: 903334
+  - instrument: HSC
+    exposure: 903336
+    visit: 903336
+  - instrument: HSC
+    exposure: 903338
+    visit: 903338
+  - instrument: HSC
+    exposure: 903342
+    visit: 903342
+  - instrument: HSC
+    exposure: 903344
+    visit: 903344
+  - instrument: HSC
+    exposure: 903346
+    visit: 903346
+  - instrument: HSC
+    exposure: 903986
+    visit: 903986
+  - instrument: HSC
+    exposure: 903988
+    visit: 903988
+  - instrument: HSC
+    exposure: 903990
+    visit: 903990
+  - instrument: HSC
+    exposure: 904010
+    visit: 904010
+  - instrument: HSC
+    exposure: 904014
+    visit: 904014
 - type: collection
   collection_type: RUN
   name: HSC/raw/all
