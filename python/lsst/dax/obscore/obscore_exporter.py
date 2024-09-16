@@ -27,7 +27,7 @@ import contextlib
 import io
 import logging
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import pyarrow
 import sqlalchemy
@@ -38,17 +38,12 @@ from lsst.daf.butler.registry.obscore import (
     RecordFactory,
     SpatialObsCorePlugin,
 )
-from lsst.daf.butler.registry.queries import SqlQueryBackend
-from lsst.daf.butler.registry.sql_registry import SqlRegistry
 from lsst.sphgeom import Region
 from pyarrow import RecordBatch, Schema
 from pyarrow.csv import CSVWriter, WriteOptions
 from pyarrow.parquet import ParquetWriter
 
 from . import ExporterConfig
-
-if TYPE_CHECKING:
-    from lsst.daf.butler.registry.queries import SqlQueryContext
 
 _LOG = logging.getLogger(__name__)
 
@@ -197,7 +192,7 @@ class _ExposureRegionFactory(ExposureRegionFactory):
         # Maps instrument and exposure ID to a visit ID
         self._exposure_to_visit: dict[str, dict[int, int]] = {}
 
-    def exposure_region(self, dataId: DataCoordinate, context: SqlQueryContext) -> Region | None:
+    def exposure_region(self, dataId: DataCoordinate) -> Region | None:
         # Docstring is inherited from a base class.
         registry = self.registry
         instrument = cast(str, dataId["instrument"])
@@ -344,15 +339,11 @@ class ObscoreExporter:
         if not collections:
             collections = ...
 
-        # Have to use non-public Registry interface.
-        registry = self.butler._registry  # type: ignore
-        assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
-        backend = SqlQueryBackend(registry._db, registry._managers, registry.dimension_record_cache)
-
-        context = backend.context()
         for dataset_type_name in self.config.dataset_types:
             _LOG.debug("Reading data for dataset %s", dataset_type_name)
-            refs = registry.queryDatasets(dataset_type_name, collections=collections, where=self.config.where)
+            refs = self.butler.registry.queryDatasets(
+                dataset_type_name, collections=collections, where=self.config.where
+            )
 
             # need dimension records
             refs = refs.expanded()
@@ -362,7 +353,7 @@ class ObscoreExporter:
                 _LOG.debug("New record, dataId=%s", dataId.mapping)
                 # _LOG.debug("New record, records=%s", dataId.records)
 
-                record = self.record_factory(ref, context)
+                record = self.record_factory(ref)
                 if record is None:
                     continue
 

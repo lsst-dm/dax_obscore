@@ -34,7 +34,6 @@ from lsst.daf.butler.registry.obscore import (
     ObsCoreLiveTableManager,
     ObsCoreManagerConfig,
 )
-from lsst.daf.butler.registry.queries import SqlQueryBackend
 from lsst.daf.butler.registry.sql_registry import SqlRegistry
 from lsst.utils import iteration
 
@@ -75,16 +74,14 @@ def obscore_update_table(
             for ref in refs:
                 _LOG.info("Will be adding dataset %s", ref)
         else:
-            backend = SqlQueryBackend(registry._db, registry._managers, registry.dimension_record_cache)
-            context = backend.context()
             count = 0
             if collection_record.type is CollectionType.RUN:
                 # Limit record number in single insert.
                 for refs_chunk in iteration.chunk_iterable(refs):
-                    count += manager.add_datasets(refs_chunk, context)
+                    count += manager.add_datasets(refs_chunk)
             elif collection_record.type is CollectionType.TAGGED:
                 for refs_chunk in iteration.chunk_iterable(refs):
-                    count += manager.associate(refs_chunk, collection_record, context)
+                    count += manager.associate(refs_chunk, collection_record)
             else:
                 raise ValueError(f"Unexpected collection type: {collection_record.type}")
             end_time = time.time()
