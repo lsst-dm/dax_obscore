@@ -26,7 +26,7 @@ __all__ = ["ObscoreExporter"]
 import contextlib
 import io
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import astropy.io.votable
 import astropy.table
@@ -43,8 +43,6 @@ from lsst.daf.butler.registry.obscore import (
     RecordFactory,
     SpatialObsCorePlugin,
 )
-from lsst.daf.butler.registry.queries import SqlQueryBackend
-from lsst.daf.butler.registry.sql_registry import SqlRegistry
 from lsst.resources import ResourcePath
 from lsst.sphgeom import Region
 from lsst.utils.logging import getLogger
@@ -54,9 +52,6 @@ from pyarrow.csv import CSVWriter, WriteOptions
 from pyarrow.parquet import ParquetWriter
 
 from . import ExporterConfig
-
-if TYPE_CHECKING:
-    from lsst.daf.butler.registry.queries import SqlQueryContext
 
 _LOG = getLogger(__name__)
 
@@ -205,7 +200,7 @@ class _ExposureRegionFactory(ExposureRegionFactory):
         # Maps instrument and exposure ID to a visit ID
         self._exposure_to_visit: dict[str, dict[int, int]] = {}
 
-    def exposure_region(self, dataId: DataCoordinate, context: SqlQueryContext) -> Region | None:
+    def exposure_region(self, dataId: DataCoordinate) -> Region | None:
         # Docstring is inherited from a base class.
         registry = self.registry
         instrument = cast(str, dataId["instrument"])
@@ -483,11 +478,6 @@ class ObscoreExporter:
         if not collections:
             raise ValueError("No collections specified. Querying all collections is not allowed.")
 
-        # Have to use non-public Registry interface.
-        registry = self.butler._registry  # type: ignore
-        assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
-        backend = SqlQueryBackend(registry._db, registry._managers, registry.dimension_record_cache)
-
         if limit is None:
             unlimited = True
         elif limit == 0:
@@ -498,7 +488,6 @@ class ObscoreExporter:
             # Always ask for one extra to allow the overflow detection.
             query_limit = abs(limit) + 1
 
-        context = backend.context()
         for dataset_type_name in self.config.dataset_types:
             _LOG.verbose("Querying datasets for dataset type %s", dataset_type_name)
             where_clauses = self.config.dataset_type_constraints.get(dataset_type_name, [self.config.where])
@@ -526,7 +515,7 @@ class ObscoreExporter:
                         _LOG.debug("New record, dataId=%s", dataId.mapping)
                         # _LOG.debug("New record, records=%s", dataId.records)
 
-                        record = self.record_factory(ref, context)
+                        record = self.record_factory(ref)
                         if record is None:
                             continue
 
