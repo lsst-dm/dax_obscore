@@ -52,7 +52,7 @@ class TestCase(unittest.TestCase):
         config = Config()
         config["root"] = self.root
         config["registry", "db"] = f"sqlite:///{self.root}/gen3.sqlite3"
-        butler = Butler(Butler.makeRepo(self.root, config=config), writeable=True)
+        butler = Butler.from_config(Butler.makeRepo(self.root, config=config), writeable=True)
         DatastoreMock.apply(butler)
         return butler
 
