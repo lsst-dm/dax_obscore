@@ -52,6 +52,12 @@ class WhereBind(BaseModel):
             The user expressions to combine.
         mode : `str`
             Combination mode. Can be ``AND`` or ``OR``.
+
+        Returns
+        -------
+        combo : `WhereBind`
+            A new `WhereBind` representing all the information of the input
+            clauses.
         """
         if len(wheres) == 1:
             return wheres[0]
