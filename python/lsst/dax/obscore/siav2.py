@@ -42,6 +42,7 @@ from .config import ExporterConfig, WhereBind
 from .obscore_exporter import ObscoreExporter
 
 _LOG = getLogger(__name__)
+_VALID_CALIB = frozenset({0, 1, 2, 3})
 
 
 class Interval(BaseModel):
@@ -128,9 +129,10 @@ class SIAv2Parameters(BaseModel):
     @field_validator("calib")
     @classmethod
     def check_calib(cls, calib: frozenset[int]) -> frozenset[int]:
-        valid_calib = {0, 1, 2, 3}
-        if calib - valid_calib:
-            raise ValueError(f"Calib levels can only be ({valid_calib}) but got {calib}")
+        if calib - _VALID_CALIB:
+            valid = ", ".join(str(s) for s in _VALID_CALIB)
+            given = ", ".join(str(s) for s in calib)
+            raise ValueError(f"Calib levels can only be ({valid}) but got ({given})")
         return calib
 
     @field_validator("dptype")
