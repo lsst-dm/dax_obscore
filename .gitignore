@@ -21,3 +21,4 @@ config.log
 .mypy_cache/
 python/lsst/dax/obscore/version.py
 tests/.tests/
+tests/tmp*
