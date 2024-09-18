@@ -162,26 +162,29 @@ def update_table(*args: Any, **kwargs: Any) -> None:
 )
 @dataset_type_option(
     help=(
-        "Comma-separated list of dataset types. "
+        "Comma-separated list of Butler dataset types. "
         "If specified it must be a subset of dataset types defined in configuration file."
     )
 )
-@collections_option()
+@collections_option(
+    help="Butler collections (not SIAv2 collections) to include in the query. Default is to use the "
+    "collections specified in the SIAv2 configuration file."
+)
 @click.option(
     "--instrument",
-    help="Name of instrument to use in query",
+    help="Name of instrument to use in query. If no instrument is specified all instruments are included.",
     type=str,
     multiple=True,
 )
 @click.option(
     "--pos",
-    help="IVOA POS region to use to restrict results.",
+    help="IVOA POS region to use to restrict results. CIRCLE, RANGE and POLYGON are supported.",
     type=str,
     multiple=True,
 )
 @click.option(
     "--time",
-    help="Time or timespan to use to constraint the query. Uses MJD UTC.",
+    help="A moment in time or a time span as a range to use to constrain the query. Uses MJD UTC.",
     type=str,
     multiple=True,
 )
@@ -194,7 +197,7 @@ def update_table(*args: Any, **kwargs: Any) -> None:
 )
 @click.option(
     "--calib",
-    help="Calibration level of the data.",
+    help="Calibration level of the data. Allowed values are 0, 1, 2, and 3",
     multiple=True,
     type=int,
 )
@@ -205,5 +208,12 @@ def update_table(*args: Any, **kwargs: Any) -> None:
 )
 @options_file_option()
 def siav2(*args: Any, **kwargs: Any) -> None:
-    """Export Butler datasets as ObsCore Data Model in parquet format."""
+    """Export Butler datasets as ObsCore Data Model in parquet format.
+
+    For details on the SIAv2 parameters see https://www.ivoa.net/documents/SIA/
+
+    Multiple values can be specified for a single parameter and the results are
+    ORed together. All range parameters allow numbers and include -Inf and
+    +Inf as options.
+    """
     script.obscore_siav2(*args, **kwargs)
