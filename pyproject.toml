@@ -53,7 +53,7 @@ zip-safe = true
 license-files = ["COPYRIGHT", "LICENSE"]
 
 [tool.setuptools.package-data]
-"lsst.dax.obscore" = ["py.typed",]
+"lsst.dax.obscore" = ["py.typed", "configs/*.yaml"]
 
 [tool.setuptools.dynamic]
 version = { attr = "lsst_versions.get_lsst_version" }
