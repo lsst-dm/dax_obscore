@@ -411,11 +411,11 @@ class SIAv2Handler:
             # Need separate where clauses for each instrument if
             # we also are using a physical filters constraint.
             if "physical_filter" in dimensions and "filters" in band_info:
-                for inst in instruments:
+                for i, inst in enumerate(instruments):
                     instrument_wheres.append(
                         WhereBind(
-                            where=f"instrument = {inst!r} AND physical_filter in (phys)",
-                            bind={"phys": band_info["filters"][inst]},
+                            where=f"instrument = INST{i} AND physical_filter in (phys)",
+                            bind={"phys": band_info["filters"][inst], f"INST{i}": inst},
                         )
                     )
             else:
