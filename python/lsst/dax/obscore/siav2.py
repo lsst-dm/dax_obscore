@@ -283,8 +283,7 @@ class SIAv2Handler:
         with self.butler.query() as query:
             records = query.dimension_records("physical_filter")
             if instruments:
-                instrs = ",".join(repr(ins) for ins in instruments)
-                records = records.where(f"instrument IN ({instrs})")
+                records = records.where("instrument in (INSTRUMENTS)", bind={"INSTRUMENTS": instruments})
             for rec in records:
                 if (spec_range := self.config.spectral_ranges.get(rec.name)) is not None:
                     spec_interval = Interval(start=spec_range[0], end=spec_range[1])
@@ -419,10 +418,10 @@ class SIAv2Handler:
                         )
                     )
             else:
-                # Can include all instruments in query, although
-                # binding does not work.
-                instrs = ",".join(repr(inst) for inst in instruments)
-                instrument_wheres.append(WhereBind(where=f"instrument IN ({instrs})"))
+                # Can include all instruments in single query.
+                instrument_wheres.append(
+                    WhereBind(where="instrument IN (INSTRUMENTS)", bind={"INSTRUMENTS": instruments})
+                )
         elif "band" in dimensions and "bands" in band_info:
             # Band is not needed for an instrument query since
             # we will be using physical filters for those.
