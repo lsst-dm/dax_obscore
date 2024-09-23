@@ -239,6 +239,7 @@ class SIAv2Handler:
     def __init__(self, butler: Butler, config: ExporterConfig):
         self.butler = butler
         self.config = config
+        self.warnings: list[str] = []
 
     def get_all_instruments(self) -> list[str]:
         """Query butler for all known instruments.
@@ -294,8 +295,9 @@ class SIAv2Handler:
                             matching_filters[rec.instrument].add(rec.name)
                             matching_bands.add(rec.band)
                 else:
-                    _LOG.warning(
-                        "Ignoring physical filter %s since it has no defined spectral range", rec.name
+                    self.warnings.append(
+                        f"Ignoring physical filter {rec.name} from instrument {rec.instrument}"
+                        " since it has no defined spectral range"
                     )
         return {"filters": matching_filters, "bands": matching_bands}
 
@@ -315,6 +317,8 @@ class SIAv2Handler:
             present since some queries are incompatible with some dataset
             types.
         """
+        # Reset warnings log.
+        self.warnings = []
         if parameters.instrument:
             instruments = list(parameters.instrument)
         else:
@@ -345,8 +349,8 @@ class SIAv2Handler:
             if parameters.pos:
                 where = self.from_pos(parameters.pos, dims)
                 if not where:
-                    _LOG.warning(
-                        "Can not support POS query for dataset type %s. Skipping it.", dataset_type_name
+                    self.warnings.append(
+                        f"Can not support POS query for dataset type {dataset_type_name}. Skipping it."
                     )
                     continue
                 wheres.append(where)
@@ -354,9 +358,9 @@ class SIAv2Handler:
             if parameters.time:
                 where = self.from_time(parameters.time, dims)
                 if not where:
-                    _LOG.warning(
-                        "Dataset type %s has no timespan defined so assuming all datasets match.",
-                        dataset_type_name,
+                    self.warnings.append(
+                        f"Dataset type {dataset_type_name} has no timespan defined "
+                        "so assuming all datasets match."
                     )
                 else:
                     wheres.append(where)
@@ -364,8 +368,8 @@ class SIAv2Handler:
             if parameters.exptime:
                 exptime_wheres = self.from_exptime(parameters.exptime, dims)
                 if exptime_wheres is None:
-                    _LOG.warning(
-                        "Can not support EXPTIME query for dataset type %s. Skipping it.", dataset_type_name
+                    self.warnings.append(
+                        f"Can not support EXPTIME query for dataset type {dataset_type_name}. Skipping it."
                     )
                     continue
                 else:
@@ -685,4 +689,15 @@ def siav2_query(
 
     exporter = ObscoreExporter(butler, cfg)
 
-    return exporter.to_votable(limit=parameters.maxrec)
+    if handler.warnings:
+        _LOG.warning("The query triggered the following warnings:\n%s", "\n".join(handler.warnings))
+
+    votable = exporter.to_votable(limit=parameters.maxrec)
+
+    if handler.warnings:
+        resource = votable.resources[0]
+        info = astropy.io.votable.tree.Info(name="QUERY_WARNINGS", value="OK")
+        info.content = "\n".join(handler.warnings)
+        resource.infos.append(info)
+
+    return votable
