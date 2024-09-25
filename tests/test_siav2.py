@@ -174,13 +174,9 @@ class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
         """Test that an SIAv2 query completes."""
         config = self.config
         config.batch_size = 3
-        # If you query an unknown instrument using IN butler is not helpful:
-        # InvalidQueryError: Query 'where' expression references a dimension
-        #    dependent on instrument without constraining it directly.
-        # Butler correctly returns 0 records if just the unknown instrument
-        # is specified.
         for kwargs, expected in (
             ({"instrument": "HSC"}, 68),
+            ({"instrument": ("HSC", "LATISS")}, 68),
             ({"instrument": "LATISS"}, 2),  # coadds do not know their instrument.
             ({"pos": "CIRCLE 320.851 -0.3 0.001"}, 28),
             ({"band": "700e-9"}, 33),
