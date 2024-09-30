@@ -403,9 +403,6 @@ class ObscoreExporter:
         resource.tables.append(table0)
         table0.fields.extend(fields)
 
-        def is_none(v: Any) -> bool:
-            return v is None
-
         chunks = []
         n_rows = 0
         for record_batch in self._make_record_batches(self.config.batch_size, limit=limit):
@@ -413,7 +410,7 @@ class ObscoreExporter:
             columns = []
             for label, column in pydict.items():
                 # Need to mask out any None values.
-                mask = [is_none(v) for v in column]
+                mask = [v is None for v in column]
                 mc = astropy.table.MaskedColumn(column, name=label, mask=mask)
                 columns.append(mc)
             chunk = astropy.table.Table(columns)
