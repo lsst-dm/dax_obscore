@@ -172,7 +172,7 @@ class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
 
     def test_query(self):
         """Test that an SIAv2 query completes."""
-        config = self.config
+        config = self.config.copy()
         config.batch_size = 3
         for kwargs, expected in (
             ({"instrument": "HSC"}, 68),
