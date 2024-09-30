@@ -31,13 +31,13 @@ from typing import Any, cast
 
 import astropy.io.votable
 import astropy.table
-import numpy as np
 import pyarrow
 import sqlalchemy
 import yaml
 from felis.datamodel import FelisType
 from felis.datamodel import Schema as FelisSchema
 from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, ddl
+from lsst.daf.butler.formatters.parquet import arrow_to_numpy
 from lsst.daf.butler.registry.obscore import (
     ExposureRegionFactory,
     ObsCoreSchema,
@@ -49,6 +49,7 @@ from lsst.sphgeom import Region
 from lsst.utils.logging import getLogger
 from numpy import ma
 from pyarrow import RecordBatch, Schema
+from pyarrow import Table as ArrowTable
 from pyarrow.csv import CSVWriter, WriteOptions
 from pyarrow.parquet import ParquetWriter
 
@@ -406,17 +407,10 @@ class ObscoreExporter:
         chunks = []
         n_rows = 0
         for record_batch in self._make_record_batches(self.config.batch_size, limit=limit):
-            pydict = record_batch.to_pydict()
-            columns = []
-            for label, column in pydict.items():
-                # Need to mask out any None values.
-                mask = [v is None for v in column]
-                mc = astropy.table.MaskedColumn(column, name=label, mask=mask)
-                columns.append(mc)
-            chunk = astropy.table.Table(columns)
+            table = ArrowTable.from_batches([record_batch])
+            chunk = arrow_to_numpy(table)
             n_rows += len(chunk)
-            array = ma.array(np.asarray(chunk), mask=np.asarray(chunk.mask))
-            chunks.append(array)
+            chunks.append(chunk)
 
         # Report any overflow.
         query_status = "OVERFLOW" if self.overflow else "OK"
