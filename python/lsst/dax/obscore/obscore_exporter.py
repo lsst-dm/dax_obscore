@@ -364,6 +364,7 @@ class ObscoreExporter:
                     arraysize=ffield.votable_arraysize,
                     unit=ffield.ivoa_unit,
                     ucd=ffield.ivoa_ucd,
+                    utype=ffield.votable_utype,
                 )
                 fields.append(field)
             elif arrow_field.name == "em_filter_name":
