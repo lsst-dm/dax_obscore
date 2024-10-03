@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-__all__ = ["ExporterConfig", "WhereBind"]
+__all__ = ["ExporterConfig"]
 
 from collections.abc import Iterable
 from typing import Any, Literal
@@ -68,9 +68,15 @@ class WhereBind(BaseModel):
             # Warn if we are overwriting bind keys.
             duplicates = bind.keys() & w.bind.keys()
             if duplicates:
-                raise ValueError(
-                    f"Combining multiple WHERE clauses with reused bind parameters of {duplicates}"
-                )
+                # Allow duplicates if they are identical.
+                differing_keys = set()
+                for dupe in duplicates:
+                    if bind[dupe] != w.bind[dupe]:
+                        differing_keys.add(dupe)
+                if differing_keys:
+                    raise ValueError(
+                        f"Combining multiple WHERE clauses with reused bind parameters of {differing_keys}."
+                    )
             bind.update(w.bind)
             extras.update(w.extra_dims)
         return cls(where=where, bind=bind, extra_dims=extras)

@@ -25,7 +25,8 @@ from collections.abc import Iterable
 
 from lsst.daf.butler import Butler, Config
 
-from .. import ExporterConfig, ObscoreExporter, WhereBind
+from ..config import ExporterConfig, WhereBind
+from ..obscore_exporter import ObscoreExporter
 
 
 def obscore_export(
