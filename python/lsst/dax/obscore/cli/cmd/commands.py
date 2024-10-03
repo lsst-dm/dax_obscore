@@ -197,7 +197,7 @@ def update_table(*args: Any, **kwargs: Any) -> None:
 )
 @click.option(
     "--calib",
-    help="Calibration level of the data. Allowed values are 0, 1, 2, and 3",
+    help="Calibration level of the data. Allowed values are 0, 1, 2, and 3.",
     multiple=True,
     type=int,
 )

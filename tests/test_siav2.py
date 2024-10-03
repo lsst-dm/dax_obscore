@@ -152,7 +152,7 @@ class SIAv2ParametersTestCase(unittest.TestCase):
 
 
 class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
-    """Tests of SIAv2 queries.r"""
+    """Tests of SIAv2 queries."""
 
     def setUp(self):
         self.root = makeTestTempDir(TESTDIR)
