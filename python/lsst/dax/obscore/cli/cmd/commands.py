@@ -208,7 +208,7 @@ def update_table(*args: Any, **kwargs: Any) -> None:
 )
 @options_file_option()
 def siav2(*args: Any, **kwargs: Any) -> None:
-    """Export Butler datasets as ObsCore Data Model in parquet format.
+    """Export Butler datasets as ObsCore Data Model in VOTable format.
 
     For details on the SIAv2 parameters see https://www.ivoa.net/documents/SIA/
 
