@@ -495,15 +495,13 @@ class ObscoreExporter:
             with self.butler.query() as query:
                 for where_clause in where_clauses:
                     if where_clause.extra_dims:
-                        results = query.join_dimensions(where_clause.extra_dims)
-                    else:
-                        results = query
+                        query = query.join_dimensions(where_clause.extra_dims)
 
                     if where_clause.where:
                         _LOG.verbose("Processing query with constraint %s", where_clause)
-                        results = results.where(where_clause.where, bind=where_clause.bind)
+                        query = query.where(where_clause.where, bind=where_clause.bind)
 
-                    refs = results.datasets(dataset_type_name, collections=collections, find_first=True)
+                    refs = query.datasets(dataset_type_name, collections=collections, find_first=True)
 
                     if not unlimited:
                         refs = refs.limit(query_limit)
