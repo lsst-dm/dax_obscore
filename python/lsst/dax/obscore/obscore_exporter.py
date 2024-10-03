@@ -26,7 +26,7 @@ __all__ = ["ObscoreExporter"]
 import contextlib
 import io
 from collections.abc import Iterator
-from functools import lru_cache
+from functools import cache
 from typing import Any, cast
 
 import astropy.io.votable
@@ -69,7 +69,7 @@ _PYARROW_TYPE = {
 }
 
 
-@lru_cache(maxsize=1)
+@cache
 def _get_obscore_schema() -> FelisSchema:
     """Read the ObsCore schema definition."""
     obscore_defn = ResourcePath("resource://lsst.dax.obscore/configs/obscore_nominal.yaml").read()
