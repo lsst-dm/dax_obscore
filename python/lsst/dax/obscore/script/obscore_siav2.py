@@ -57,15 +57,15 @@ def obscore_siav2(
         Location of the output file.
     config : `str`
         Location of the configuration file.
-    instrument : `str`
+    instrument : `~collections.abc.Iterable` [ `str` ]
         Name of instrument to use for query.
-    pos : `str`
+    pos :  `~collections.abc.Iterable` [ `str` ]
         Spatial region to use for query.
-    time : `str`
+    time :  `~collections.abc.Iterable` [ `str` ]
         Time or time span to use for the query, UTC MJD.
-    band : `str`
+    band :  `~collections.abc.Iterable` [ `str` ]
         Wavelength range to constraint query. Units are meters.
-    exptime : `str`
+    exptime :  `~collections.abc.Iterable` [ `str` ]
         Exposure time ranges in seconds.
     calib : `~collections.abc.Iterable` [ `int` ]
         Calibration level to select. All are selected if none specified.
