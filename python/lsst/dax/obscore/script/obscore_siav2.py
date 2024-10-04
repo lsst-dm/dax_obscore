@@ -19,22 +19,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ["obscore_export"]
+__all__ = ["obscore_siav2"]
 
+import logging
+import numbers
 from collections.abc import Iterable
 
 from lsst.daf.butler import Butler, Config
 
-from ..config import ExporterConfig, WhereBind
-from ..obscore_exporter import ObscoreExporter
+from ..config import ExporterConfig
+from ..siav2 import siav2_query_from_raw
+
+_LOG = logging.getLogger(__name__)
 
 
-def obscore_export(
+def obscore_siav2(
     repo: str,
     destination: str,
     config: str,
-    format: str,
-    where: str | None,
+    instrument: Iterable[str],
+    pos: Iterable[str],
+    time: Iterable[str],
+    band: Iterable[str],
+    exptime: Iterable[str],
+    calib: Iterable[numbers.Integral],
+    maxrec: numbers.Integral | str | None,
     collections: Iterable[str],
     dataset_type: Iterable[str],
 ) -> None:
@@ -48,32 +57,41 @@ def obscore_export(
         Location of the output file.
     config : `str`
         Location of the configuration file.
-    format : `str`
-        Output format, 'csv' or 'parquet'.
-    where : `str`
-        Optional user expression, if provided overrides one in ``config``.
+    instrument : `~collections.abc.Iterable` [ `str` ]
+        Name of instrument to use for query.
+    pos :  `~collections.abc.Iterable` [ `str` ]
+        Spatial region to use for query.
+    time :  `~collections.abc.Iterable` [ `str` ]
+        Time or time span to use for the query, UTC MJD.
+    band :  `~collections.abc.Iterable` [ `str` ]
+        Wavelength range to constraint query. Units are meters.
+    exptime :  `~collections.abc.Iterable` [ `str` ]
+        Exposure time ranges in seconds.
+    calib : `~collections.abc.Iterable` [ `int` ]
+        Calibration level to select. All are selected if none specified.
+    maxrec : `int` or `str` or `None`
+        Maximum number of records to return. `None` is unlimited.
     collections : `~collections.abc.Iterable` [ `str` ]
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
-        Names of dataset types to export.
+        Names of dataset types to include in query.
     """
     butler = Butler.from_config(repo, writeable=False)
 
     config_data = Config(config)
     cfg = ExporterConfig.model_validate(config_data)
-    if where:
-        cfg.where = WhereBind(where=where)
-    if collections:
-        cfg.collections = list(collections)
-    if dataset_type:
-        cfg.select_dataset_types(dataset_type)
 
-    exporter = ObscoreExporter(butler, cfg)
-    if format == "parquet":
-        exporter.to_parquet(destination)
-    elif format == "csv":
-        exporter.to_csv(destination)
-    elif format == "votable":
-        exporter.to_votable_file(destination)
-    else:
-        raise ValueError(f"Unexpected output format {format:r}")
+    votable = siav2_query_from_raw(
+        butler,
+        cfg,
+        instrument=instrument,
+        pos=pos,
+        time=time,
+        band=band,
+        exptime=exptime,
+        calib=calib,
+        collections=collections,
+        dataset_type=dataset_type,
+        maxrec=maxrec,
+    )
+    votable.to_xml(destination)

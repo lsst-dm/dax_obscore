@@ -25,27 +25,38 @@ __all__ = ["ObscoreExporter"]
 
 import contextlib
 import io
-import logging
 from collections.abc import Iterator
+from functools import cache
 from typing import Any, cast
 
+import astropy.io.votable
+import astropy.table
 import pyarrow
 import sqlalchemy
+import yaml
+from felis.datamodel import FelisType
+from felis.datamodel import Schema as FelisSchema
 from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, ddl
+from lsst.daf.butler.formatters.parquet import arrow_to_numpy
 from lsst.daf.butler.registry.obscore import (
     ExposureRegionFactory,
     ObsCoreSchema,
     RecordFactory,
     SpatialObsCorePlugin,
 )
+from lsst.resources import ResourcePath
 from lsst.sphgeom import Region
+from lsst.utils.logging import getLogger
+from numpy import ma
 from pyarrow import RecordBatch, Schema
+from pyarrow import Table as ArrowTable
 from pyarrow.csv import CSVWriter, WriteOptions
 from pyarrow.parquet import ParquetWriter
 
 from . import ExporterConfig
+from .config import WhereBind
 
-_LOG = logging.getLogger(__name__)
+_LOG = getLogger(__name__)
 
 # Map few standard Python types to pyarrow types
 _PYARROW_TYPE = {
@@ -57,6 +68,15 @@ _PYARROW_TYPE = {
     sqlalchemy.String: pyarrow.string(),
     sqlalchemy.Text: pyarrow.string(),
 }
+
+
+@cache
+def _get_obscore_schema() -> FelisSchema:
+    """Read the ObsCore schema definition."""
+    obscore_defn = ResourcePath("resource://lsst.dax.obscore/configs/obscore_nominal.yaml").read()
+    obscore_data = yaml.safe_load(obscore_defn)
+    schema = FelisSchema.model_validate(obscore_data)
+    return schema
 
 
 class _BatchCollector:
@@ -287,7 +307,7 @@ class ObscoreExporter:
         """
         compression = self.config.parquet_compression
         with ParquetWriter(output, self.schema, compression=compression) as writer:
-            for record_batch in self._make_record_batches(self.config.batch_size):
+            for record_batch, _ in self._make_record_batches(self.config.batch_size):
                 writer.write_batch(record_batch)
 
     def to_csv(self, output: str) -> None:
@@ -304,8 +324,121 @@ class ObscoreExporter:
         null_string = self.config.csv_null_string.encode()
         with contextlib.closing(_CSVFile(output, null_string, sep_in=b"\x1f", sep_out=b",")) as file:
             with CSVWriter(file, self.schema, write_options=options) as writer:
-                for record_batch in self._make_record_batches(self.config.batch_size):
+                for record_batch, _ in self._make_record_batches(self.config.batch_size):
                     writer.write_batch(record_batch)
+
+    def to_votable(self, limit: int | None = None) -> astropy.io.votable.tree.VOTableFile:
+        """Run the export and return the results as a VOTable instance.
+
+        Parameters
+        ----------
+        limit : `int` or `None`, optional
+            Maximum number of records to return. If `None` there is no limit.
+
+        Returns
+        -------
+        votable : `astropy.io.votable.tree.VOTableFile`
+            The resulting matches as a VOTable.
+        """
+        # Get the (possibly cached) ObsCore schema.
+        schema = _get_obscore_schema()
+
+        tables = schema.tables
+        if len(tables) != 1:
+            raise RuntimeError("More than one table defined in ObsCore schema")
+        obscore_columns = {column.name: column for column in tables[0].columns}
+
+        votable = astropy.io.votable.tree.VOTableFile()
+        resource = astropy.io.votable.tree.Resource()
+        votable.resources.append(resource)
+
+        fields = []
+        for arrow_field in self.schema:
+            if arrow_field.name in obscore_columns:
+                ffield = obscore_columns[arrow_field.name]
+                votable_datatype = FelisType.felis_type(ffield.datatype.value).votable_name
+                field = astropy.io.votable.tree.Field(
+                    votable,
+                    name=ffield.name,
+                    datatype=votable_datatype,
+                    arraysize=ffield.votable_arraysize,
+                    unit=ffield.ivoa_unit,
+                    ucd=ffield.ivoa_ucd,
+                    utype=ffield.votable_utype,
+                )
+                fields.append(field)
+            elif arrow_field.name == "em_filter_name":
+                # Non-standard but part of internal standard schema.
+                field = astropy.io.votable.tree.Field(
+                    votable,
+                    name="em_filter_name",
+                    datatype="char",
+                    arraysize="*",
+                )
+                fields.append(field)
+            else:
+                # This must be a non-standard field. Attempt to add it.
+                kwargs = {}
+                datatype = ""
+                if (
+                    arrow_field.type.equals(pyarrow.int64())
+                    or arrow_field.type.equals(pyarrow.int32())
+                    or arrow_field.type.equals(pyarrow.int16())
+                ):
+                    datatype = "int"
+                elif arrow_field.type.equals(pyarrow.string()):
+                    datatype = "char"
+                    kwargs["arraysize"] = "*"
+                elif arrow_field.type.equals(pyarrow.float64()):
+                    datatype = "double"
+                else:
+                    raise RuntimeError(f"Could not handle unrecognized column {arrow_field.name}")
+                field = astropy.io.votable.tree.Field(
+                    votable,
+                    name=arrow_field.name,
+                    datatype=datatype,
+                    **kwargs,
+                )
+                fields.append(field)
+
+        table0 = astropy.io.votable.tree.TableElement(votable)
+        resource.tables.append(table0)
+        table0.fields.extend(fields)
+
+        chunks = []
+        n_rows = 0
+        overflow = False
+        for record_batch, overflow in self._make_record_batches(self.config.batch_size, limit=limit):
+            table = ArrowTable.from_batches([record_batch])
+            chunk = arrow_to_numpy(table)
+            n_rows += len(chunk)
+            chunks.append(chunk)
+
+        # Report any overflow.
+        query_status = "OVERFLOW" if overflow else "OK"
+        info = astropy.io.votable.tree.Info(name="QUERY_STATUS", value=query_status)
+        resource.infos.append(info)
+
+        # Combine all the chunks.
+        if chunks:
+            table0.array = ma.hstack(chunks)
+
+        # Write the output file.
+        _LOG.info("Got %d result%s%s", n_rows, "" if n_rows == 1 else "s", " (overflow)" if overflow else "")
+        return votable
+
+    def to_votable_file(self, output: str, limit: int | None = None) -> None:
+        """Export Butler datasets as ObsCore data model in VOTable format.
+
+        Parameters
+        ----------
+        output : `str`
+            Location of the output file.
+        limit : `int` or `None`
+            Limit on number of records to return. `None` means no limit.
+        """
+        votable = self.to_votable(limit=limit)
+        votable.to_xml(output)
 
     def _make_schema(self, table_spec: ddl.TableSpec) -> Schema:
         """Create schema definition for output data.
@@ -331,42 +464,93 @@ class ObscoreExporter:
 
         return pyarrow.schema(schema)
 
-    def _make_record_batches(self, batch_size: int = 10_000) -> Iterator[RecordBatch]:
-        """Generate batches of records to save to a file."""
+    def _make_record_batches(
+        self, batch_size: int = 10_000, limit: int | None = None
+    ) -> Iterator[tuple[RecordBatch, bool]]:
+        """Generate batches of records to save to a file.
+
+        Yields the batches and a flag indicating whether an overflow condition
+        was hit.
+        """
         batch = _BatchCollector(self.schema)
+
+        # Set overflow flag.
+        overflow = False
 
         collections: Any = self.config.collections
         if not collections:
-            collections = ...
+            raise ValueError("No collections specified. Querying all collections is not allowed.")
+
+        if limit is not None:
+            if limit == 0:
+                # Return immediately since no records requested.
+                return
+            # Always ask for one extra to allow overflow detection.
+            limit = abs(limit) + 1
 
         for dataset_type_name in self.config.dataset_types:
-            _LOG.debug("Reading data for dataset %s", dataset_type_name)
-            refs = self.butler.registry.queryDatasets(
-                dataset_type_name, collections=collections, where=self.config.where
-            )
+            _LOG.verbose("Querying datasets for dataset type %s [limit=%s]", dataset_type_name, limit)
+            where_clauses = self.config.dataset_type_constraints.get(dataset_type_name, [self.config.where])
+            if not where_clauses:
+                # Want an empty default to match everything.
+                where_clauses = [WhereBind(where="")]
 
-            # need dimension records
-            refs = refs.expanded()
-            count = 0
-            for ref in refs:
-                dataId = ref.dataId
-                _LOG.debug("New record, dataId=%s", dataId.mapping)
-                # _LOG.debug("New record, records=%s", dataId.records)
+            with self.butler.query() as query:
+                for where_clause in where_clauses:
+                    if where_clause.extra_dims:
+                        query = query.join_dimensions(where_clause.extra_dims)
 
-                record = self.record_factory(ref)
-                if record is None:
-                    continue
+                    if where_clause.where:
+                        _LOG.verbose("Processing query with constraint %s", where_clause)
+                        query = query.where(where_clause.where, bind=where_clause.bind)
 
-                count += 1
+                    refs = query.datasets(dataset_type_name, collections=collections, find_first=True)
 
-                batch.add_to_batch(record)
-                if batch.size >= batch_size:
-                    _LOG.debug("Saving next record batch, size=%s", batch.size)
-                    yield batch.make_record_batch()
+                    if limit is not None:
+                        refs = refs.limit(limit)
 
-            _LOG.info("Copied %d records from dataset type %s", count, dataset_type_name)
+                    # need dimension records
+                    count = 0
+                    for ref in refs.with_dimension_records():
+                        dataId = ref.dataId
+                        _LOG.debug("New record, dataId=%s", dataId.mapping)
+                        # _LOG.debug("New record, records=%s", dataId.records)
+
+                        record = self.record_factory(ref)
+                        if record is None:
+                            continue
+
+                        count += 1
+                        if limit is not None and count == limit:
+                            # Hit the +1 so should not add this to the batch.
+                            _LOG.debug("Got one more than requested limit so dropping final record.")
+                            overflow = True
+                            break
+
+                        batch.add_to_batch(record)
+                        if batch.size >= batch_size:
+                            _LOG.debug("Saving next record batch, size=%s", batch.size)
+                            yield (batch.make_record_batch(), overflow)
+
+                    if limit is not None:
+                        limit -= count
+                    if overflow:
+                        # We counted one too many so adjust for the log
+                        # message.
+                        count -= 1
+
+                    _LOG.info("Copied %d records from dataset type %s", count, dataset_type_name)
+
+                    if overflow:
+                        # No more queries need to run.
+                        # This breaks out one level of nesting.
+                        break
+
+                if overflow:
+                    # Stop further dataset type queries.
+                    break
 
         # Final batch if anything is there
         if batch.size > 0:
             _LOG.debug("Saving final record batch, size=%s", batch.size)
-            yield batch.make_record_batch()
+            yield (batch.make_record_batch(), overflow)

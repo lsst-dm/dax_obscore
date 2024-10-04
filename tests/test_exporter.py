@@ -23,14 +23,14 @@ import csv
 import os
 import unittest
 
+import astropy.io.votable
 import pyarrow
 import pyarrow.parquet
-from lsst.daf.butler import Butler, Config
 from lsst.daf.butler.registry.obscore import DatasetTypeConfig
 from lsst.daf.butler.registry.obscore._schema import _STATIC_COLUMNS
-from lsst.daf.butler.tests import DatastoreMock
 from lsst.daf.butler.tests.utils import makeTestTempDir, removeTestTempDir
 from lsst.dax.obscore import ExporterConfig, ObscoreExporter
+from lsst.dax.obscore.tests import DaxObsCoreTestMixin
 
 TESTDIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -38,7 +38,7 @@ TESTDIR = os.path.abspath(os.path.dirname(__file__))
 _STANDARD_COLUMNS = tuple(col.name for col in _STATIC_COLUMNS) + ("s_dec", "s_ra", "s_fov", "s_region")
 
 
-class TestCase(unittest.TestCase):
+class TestCase(unittest.TestCase, DaxObsCoreTestMixin):
     """Tests of ObscoreExporter"""
 
     def setUp(self):
@@ -46,47 +46,6 @@ class TestCase(unittest.TestCase):
 
     def tearDown(self):
         removeTestTempDir(self.root)
-
-    def make_butler(self) -> Butler:
-        """Return new Butler instance on each call."""
-        config = Config()
-        config["root"] = self.root
-        config["registry", "db"] = f"sqlite:///{self.root}/gen3.sqlite3"
-        butler = Butler.from_config(Butler.makeRepo(self.root, config=config), writeable=True)
-        DatastoreMock.apply(butler)
-        return butler
-
-    def make_export_config(self):
-        """Prepare configuration for exporter"""
-        config = ExporterConfig(
-            version=0,
-            facility_name="Subaru",
-            obs_collection="obs-collection",
-            collections=["HSC/runs/ci_hsc"],
-            use_butler_uri=False,
-            dataset_types={
-                "_mock_calexp": DatasetTypeConfig(
-                    calib_level=2,
-                    dataproduct_type="image",
-                    dataproduct_subtype="lsst.calexp",
-                    obs_id_fmt="{records[visit].name}",
-                    datalink_url_fmt="http://datalink.org/{obs_id}",
-                ),
-                "_mock_deepCoadd": DatasetTypeConfig(
-                    calib_level=3,
-                    dataproduct_type="image",
-                    dataproduct_subtype="lsst.deepCoadd",
-                    obs_id_fmt="{skymap}-{tract}-{patch}",
-                    datalink_url_fmt="http://datalink.org/{id}",
-                ),
-            },
-            spectral_ranges={
-                "r": [552.0, 691.0],
-                "i": [691.0, 818.0],
-            },
-            extra_columns={"day_obs": {"template": "{records[visit].day_obs}", "type": "int"}},
-        )
-        return config
 
     def test_schema(self):
         """Check how schema is constructed"""
@@ -165,7 +124,7 @@ class TestCase(unittest.TestCase):
     def test_export_parquet(self):
         """Test Parquet export method"""
         butler = self.make_butler()
-        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"))
+        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
 
         config = self.make_export_config()
         xprtr = ObscoreExporter(butler, config)
@@ -196,7 +155,7 @@ class TestCase(unittest.TestCase):
     def test_export_csv(self):
         """Test CSV export method"""
         butler = self.make_butler()
-        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"))
+        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
 
         # try several options for null_string
         for null_string in (None, "$NULL", ""):
@@ -221,6 +180,40 @@ class TestCase(unittest.TestCase):
                     if expected_null != "":
                         self.assertFalse("" in row.values())
                     self.assertIn(expected_null, row.values())
+
+    def test_export_votable(self):
+        """Test Parquet export method"""
+        butler = self.make_butler()
+        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
+
+        config = self.make_export_config()
+        xprtr = ObscoreExporter(butler, config)
+        output = os.path.join(self.root, "output.vot")
+        xprtr.to_votable_file(output)
+
+        votable = astropy.io.votable.parse(output)
+        tables = list(votable.iter_tables())
+        self.assertEqual(len(tables), 1)
+        table0 = tables[0].array
+        self.assertEqual(len(table0), 35, str(table0))
+
+        self.assertEqual(set(table0["facility_name"]), {"Subaru"})
+        self.assertEqual(set(table0["obs_collection"]), {"obs-collection"})
+        self.assertEqual(set(table0["dataproduct_type"]), {"image"})
+        self.assertEqual(set(table0["dataproduct_subtype"]), {"lsst.calexp", "lsst.deepCoadd"})
+        self.assertEqual(set(table0["calib_level"]), {2, 3})
+        self.assertEqual(set(table0["instrument_name"]), {"HSC", ""})
+        self.assertEqual(set(table0["em_filter_name"]), {"i", "r"})
+        self.assertEqual(set(table0["day_obs"].tolist()), {20130617, 20131102, None})
+        for value in table0["s_region"]:
+            self.assertTrue(value.startswith("POLYGON "))
+
+        # Now with a limit.
+        xprtr.to_votable_file(output, limit=5)
+        votable = astropy.io.votable.parse(output)
+        tables = list(votable.iter_tables())
+        table0 = tables[0].array
+        self.assertEqual(len(table0), 5, str(table0))
 
 
 if __name__ == "__main__":
