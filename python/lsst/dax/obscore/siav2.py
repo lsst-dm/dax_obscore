@@ -535,7 +535,11 @@ class SIAv2Handler:
             for cmp, value in zip((">", "<"), exptime_interval, strict=True):
                 if math.isfinite(value):
                     exp_wheres.append(WhereBind(where=f"{exp_dim}.exposure_time {cmp} {value}"))
-            wheres.append(WhereBind.combine(exp_wheres))
+            if exp_wheres:
+                wheres.append(WhereBind.combine(exp_wheres))
+        if not wheres:
+            # No constraint of exposure time (e.g., -Inf +Inf).
+            return WhereBind()
         return WhereBind.combine(wheres, mode="OR")
 
 

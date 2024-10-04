@@ -64,10 +64,14 @@ class WhereBind(BaseModel):
             raise ValueError("Must provide at least one WhereBind for combination.")
         if n_wheres == 1:
             return wheres[0]
-        where = f" {mode} ".join(f"({w.where})" for w in wheres)
+        where = f" {mode} ".join(f"({w.where})" for w in wheres if w.where)
         bind: dict[str, Any] = {}
         extras: set[str] = set()
         for w in wheres:
+            extras.update(w.extra_dims)
+            # For an empty where clause the bind values are irrelevant.
+            if not w.where:
+                continue
             # Warn if we are overwriting bind keys.
             duplicates = bind.keys() & w.bind.keys()
             if duplicates:
@@ -81,7 +85,7 @@ class WhereBind(BaseModel):
                         f"Combining multiple WHERE clauses with reused bind parameters of {differing_keys}."
                     )
             bind.update(w.bind)
-            extras.update(w.extra_dims)
+
         return cls(where=where, bind=bind, extra_dims=extras)
 
 

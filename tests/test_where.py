@@ -64,6 +64,18 @@ class WhereBindTestCase(unittest.TestCase):
             ),
         )
 
+        # Duplicates are ignored if there is no where string at all.
+        w_empty = WhereBind(bind={"phys": ("filter1", "filter4")}, extras={"exposure"})
+        w_and_empty = WhereBind.combine([w2, w_empty])
+        self.assertEqual(
+            w_and_empty,
+            WhereBind(
+                where="(physical_filter IN (phys))",
+                bind={"phys": ("filter1", "filter2")},
+                extras={"exposure"},
+            ),
+        )
+
         # Reuse phys bind key with different value and add instrument key.
         w3 = WhereBind(
             where="physical_filter IN (phys) AND instrument = INST",
