@@ -1,3 +1,4 @@
+# A configuration that can be used for simple tests involving the ci_hsc_gen3 repo.
 facility_name: Subaru
 obs_collection: LSST.CI
 collections: ["HSC/runs/ci_hsc"]
