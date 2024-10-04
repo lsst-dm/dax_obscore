@@ -82,6 +82,9 @@ class WhereBindTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             WhereBind.combine([w1, w3, w4])
 
+        with self.assertRaises(ValueError):
+            WhereBind.combine([])
+
 
 if __name__ == "__main__":
     unittest.main()

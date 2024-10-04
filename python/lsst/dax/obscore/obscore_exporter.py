@@ -54,6 +54,7 @@ from pyarrow.csv import CSVWriter, WriteOptions
 from pyarrow.parquet import ParquetWriter
 
 from . import ExporterConfig
+from .config import WhereBind
 
 _LOG = getLogger(__name__)
 
@@ -491,6 +492,9 @@ class ObscoreExporter:
         for dataset_type_name in self.config.dataset_types:
             _LOG.verbose("Querying datasets for dataset type %s", dataset_type_name)
             where_clauses = self.config.dataset_type_constraints.get(dataset_type_name, [self.config.where])
+            if not where_clauses:
+                # Want an empty default to match everything.
+                where_clauses = [WhereBind(where="")]
 
             with self.butler.query() as query:
                 for where_clause in where_clauses:

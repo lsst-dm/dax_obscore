@@ -59,7 +59,10 @@ class WhereBind(BaseModel):
             A new `WhereBind` representing all the information of the input
             clauses.
         """
-        if len(wheres) == 1:
+        n_wheres = len(wheres)
+        if n_wheres == 0:
+            raise ValueError("Must provide at least one WhereBind for combination.")
+        if n_wheres == 1:
             return wheres[0]
         where = f" {mode} ".join(f"({w.where})" for w in wheres)
         bind: dict[str, Any] = {}

@@ -375,9 +375,11 @@ class SIAv2Handler:
                 else:
                     wheres.append(exptime_wheres)
 
+            # Default to an everything Where.
+            where_clauses = [WhereBind(where="")]
             if instrument_wheres:
                 where_clauses = [WhereBind.combine([iwhere] + wheres) for iwhere in instrument_wheres]
-            else:
+            elif wheres:
                 where_clauses = [WhereBind.combine(wheres)]
 
             dataset_type_wheres[dataset_type_name] = where_clauses
