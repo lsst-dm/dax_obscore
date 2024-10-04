@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-__all__ = ["SIAv2Handler", "siav2_query", "siav2_query_from_raw"]
+__all__ = ["SIAv2Handler", "SIAv2Parameters", "siav2_query", "siav2_query_from_raw"]
 
 import math
 import numbers
