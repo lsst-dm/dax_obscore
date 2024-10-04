@@ -481,18 +481,15 @@ class ObscoreExporter:
         if not collections:
             raise ValueError("No collections specified. Querying all collections is not allowed.")
 
-        if limit is None:
-            unlimited = True
-        elif limit == 0:
-            # Return immediately.
-            return
-        else:
-            unlimited = False
-            # Always ask for one extra to allow the overflow detection.
-            query_limit = abs(limit) + 1
+        if limit is not None:
+            if limit == 0:
+                # Return immediately since no records requested.
+                return
+            # Always ask for one extra to allow overflow detection.
+            limit = abs(limit) + 1
 
         for dataset_type_name in self.config.dataset_types:
-            _LOG.verbose("Querying datasets for dataset type %s", dataset_type_name)
+            _LOG.verbose("Querying datasets for dataset type %s [limit=%s]", dataset_type_name, limit)
             where_clauses = self.config.dataset_type_constraints.get(dataset_type_name, [self.config.where])
             if not where_clauses:
                 # Want an empty default to match everything.
@@ -509,8 +506,8 @@ class ObscoreExporter:
 
                     refs = query.datasets(dataset_type_name, collections=collections, find_first=True)
 
-                    if not unlimited:
-                        refs = refs.limit(query_limit)
+                    if limit is not None:
+                        refs = refs.limit(limit)
 
                     # need dimension records
                     count = 0
@@ -524,7 +521,7 @@ class ObscoreExporter:
                             continue
 
                         count += 1
-                        if not unlimited and count == query_limit:
+                        if limit is not None and count == limit:
                             # Hit the +1 so should not add this to the batch.
                             _LOG.debug("Got one more than requested limit so dropping final record.")
                             overflow = True
@@ -535,8 +532,8 @@ class ObscoreExporter:
                             _LOG.debug("Saving next record batch, size=%s", batch.size)
                             yield (batch.make_record_batch(), overflow)
 
-                    if not unlimited:
-                        query_limit -= count
+                    if limit is not None:
+                        limit -= count
                     if overflow:
                         # We counted one too many so adjust for the log
                         # message.
