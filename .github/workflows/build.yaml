@@ -50,10 +50,9 @@ jobs:
           uv pip install -v --system --no-deps -e .
 
       - name: Run tests
-        env:
-          DAF_BUTLER_PLUGINS: ${{ github.workspace }}/python/lsst/dax/obscore/cli/resources.yaml
         run: |
           pytest -r a -v -n 3 --cov=lsst.dax.obscore --cov=tests --cov-report=xml --cov-report=term --cov-branch
+          butler obscore -h
 
       - name: Upload coverage to codecov
         uses: codecov/codecov-action@v4
