@@ -16,6 +16,7 @@ classifiers = [
     "License :: OSI Approved :: GPLv3",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering :: Astronomy",
@@ -34,6 +35,9 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.entry-points.'butler.cli']
+dax_obscore = "lsst.dax.obscore.cli:get_cli_subcommands"
+
 [project.urls]
 "Homepage" = "https://github.com/lsst-dm/dax_obscore"
 
@@ -42,7 +46,6 @@ postgres = ["psycopg2"]
 
 test = [
     "pytest >= 3.2",
-    "pytest-openfiles >= 0.5.0",
 ]
 
 [tool.setuptools.packages.find]

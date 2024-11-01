@@ -31,11 +31,10 @@ from typing import Any, cast
 
 import astropy.io.votable
 import astropy.table
+import felis.datamodel
 import pyarrow
 import sqlalchemy
 import yaml
-from felis.datamodel import FelisType
-from felis.datamodel import Schema as FelisSchema
 from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, ddl
 from lsst.daf.butler.formatters.parquet import arrow_to_numpy
 from lsst.daf.butler.registry.obscore import (
@@ -71,11 +70,11 @@ _PYARROW_TYPE = {
 
 
 @cache
-def _get_obscore_schema() -> FelisSchema:
+def _get_obscore_schema() -> felis.datamodel.Schema:
     """Read the ObsCore schema definition."""
     obscore_defn = ResourcePath("resource://lsst.dax.obscore/configs/obscore_nominal.yaml").read()
     obscore_data = yaml.safe_load(obscore_defn)
-    schema = FelisSchema.model_validate(obscore_data)
+    schema: felis.datamodel.Schema = felis.datamodel.Schema.model_validate(obscore_data)
     return schema
 
 
@@ -356,7 +355,7 @@ class ObscoreExporter:
         for arrow_field in self.schema:
             if arrow_field.name in obscore_columns:
                 ffield = obscore_columns[arrow_field.name]
-                votable_datatype = FelisType.felis_type(ffield.datatype.value).votable_name
+                votable_datatype = felis.datamodel.FelisType.felis_type(ffield.datatype.value).votable_name
                 field = astropy.io.votable.tree.Field(
                     votable,
                     name=ffield.name,
