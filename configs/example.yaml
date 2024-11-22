@@ -1,4 +1,6 @@
 facility_name: Subaru
+facility_map:
+  HSC: Subaru
 obs_collection: LSST.DRP0
 collections: ["HSC/runs/RC2/w_2022_16/DM-34451"]
 dataset_types:
