@@ -4,6 +4,10 @@
 namespace: embargo
 version: 1
 facility_name: Rubin-LSST
+facility_map:
+  LATISS: "Rubin:1.2m"
+  LSSTComCam: "Rubin:Simonyi"
+  LSSTCam: "Rubin:Simonyi"
 # We don't explicitly specify instrument_name - it's auto-generated from the corresponding Butler dimension
 obs_collection: LATISS_LIVE       # may evolve as experience with this builds up
 collection_type: RUN              # means we are using all RUN-type collections that match line below
