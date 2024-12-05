@@ -22,3 +22,4 @@ config.log
 python/lsst/dax/obscore/version.py
 tests/.tests/
 tests/tmp*
+python/*.dist-info/
