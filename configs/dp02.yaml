@@ -9,7 +9,7 @@ dataset_types:
     calib_level: 1
     obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
   calexp:
     dataproduct_type: image
@@ -17,7 +17,7 @@ dataset_types:
     calib_level: 2
     obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
   deepCoadd_calexp:
     dataproduct_type: image
@@ -25,7 +25,7 @@ dataset_types:
     calib_level: 3
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
   goodSeeingCoadd:
     dataproduct_type: image
@@ -33,7 +33,7 @@ dataset_types:
     calib_level: 3
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
   goodSeeingDiff_differenceExp:
     dataproduct_type: image
@@ -41,7 +41,7 @@ dataset_types:
     calib_level: 3
     obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
 extra_columns:
   lsst_visit:

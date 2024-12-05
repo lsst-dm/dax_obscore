@@ -9,7 +9,7 @@ dataset_types:
     calib_level: 1
     obs_id_fmt: "{records[exposure].obs_id}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "http://datalink.org/{obs_id}"
   calexp:
     dataproduct_type: image
@@ -17,7 +17,7 @@ dataset_types:
     calib_level: 2
     obs_id_fmt: "{records[visit].name}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "http://datalink.org/{obs_id}"
   deepCoadd_calexp:
     dataproduct_type: image
@@ -25,14 +25,14 @@ dataset_types:
     calib_level: 3
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.count
-    access_format: image/fits
+    access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "http://datalink.org/{obs_id}"
   deepCoadd_forced_src:
     dataproduct_type: measurements
     dataproduct_subtype: lsst.deepCoadd_forced_src
     calib_level: 3
     obs_id_fmt: "{skymap}-{tract}-{patch}"
-    access_format: application/x-votable+xml;content=datalink
+    access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "http://datalink.org/{obs_id}"
 spectral_ranges:
   "u": [330.0e-9, 400.0e-9]
