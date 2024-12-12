@@ -4,7 +4,7 @@ facility_map:
   LSSTComCam: "Rubin:Simonyi"
   LSSTCam: "Rubin:Simonyi"
 obs_collection: LSST.Embargo
-collections: [<!!!! JIM PLEASE FILL IN LIST OF COLLECTIONS CONTAINING IMAGES OF INTEREST !!!!>]
+collections: ["LSSTComCam/prompt/output-*", "LSSTComCam/runs/DRP/*/w_*/*", "LSSTComCam/nightlyValidation"]
 use_butler_uri: false
 dataset_types:
   raw:
