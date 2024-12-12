@@ -1,4 +1,8 @@
-facility_name: Rubin-LSST
+facility_name: Rubin:Simonyi
+facility_map:
+  LATISS: "Rubin:1.2m"
+  LSSTComCam: "Rubin:Simonyi"
+  LSSTCam: "Rubin:Simonyi"
 obs_collection: LSST.Embargo
 collections: [<!!!! JIM PLEASE FILL IN LIST OF COLLECTIONS CONTAINING IMAGES OF INTEREST !!!!>]
 use_butler_uri: false
