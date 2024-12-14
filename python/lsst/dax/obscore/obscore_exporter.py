@@ -27,7 +27,7 @@ import contextlib
 import io
 from collections.abc import Iterator
 from functools import cache
-from typing import Any, cast
+from typing import Any
 
 import astropy.io.votable
 import astropy.table
@@ -35,7 +35,7 @@ import felis.datamodel
 import pyarrow
 import sqlalchemy
 import yaml
-from lsst.daf.butler import Butler, DataCoordinate, Dimension, Registry, ddl
+from lsst.daf.butler import Butler, DataCoordinate, ddl
 from lsst.daf.butler.formatters.parquet import arrow_to_numpy
 from lsst.daf.butler.registry.obscore import (
     ExposureRegionFactory,
@@ -198,75 +198,39 @@ class _CSVFile(io.BufferedWriter):
 
 
 class _ExposureRegionFactory(ExposureRegionFactory):
-    """Find exposure region from a matching visit dimensions records."""
+    """Exposure region factory that returns an existing region, region is
+    specified via `set` method, which should be called before calling
+    record factory.
+    """
 
-    def __init__(self, registry: Registry):
-        self.registry = registry
-        self.universe = registry.dimensions
+    def __init__(self) -> None:
+        self._data_id: DataCoordinate | None = None
+        self._region: Region | None = None
 
-        # Maps instrument and visit ID to a region
-        self._visit_regions: dict[str, dict[int, Region]] = {}
-        # Maps instrument+visit+detector to a region
-        self._visit_detector_regions: dict[str, dict[tuple[int, int], Region]] = {}
-        # Maps instrument and exposure ID to a visit ID
-        self._exposure_to_visit: dict[str, dict[int, int]] = {}
+    def set(self, data_id: DataCoordinate, region: Region) -> None:
+        """Set region for specified DataId.
+
+        Parameters
+        ----------
+        data_id : `~lsst.daf.butler.DataCoordinate`
+            Data ID that will be matched against parameter of
+            `exposure_region`.
+        region : `Region`
+            Corresponding region.
+        """
+        self._data_id = data_id
+        self._region = region
+
+    def reset(self) -> None:
+        """Reset DataId and region to default values."""
+        self._data_id = None
+        self._region = None
 
     def exposure_region(self, dataId: DataCoordinate) -> Region | None:
-        # Docstring is inherited from a base class.
-        registry = self.registry
-        instrument = cast(str, dataId["instrument"])
-
-        exposure_to_visit = self._exposure_to_visit.get(instrument)
-        if exposure_to_visit is None:
-            self._exposure_to_visit[instrument] = exposure_to_visit = {}
-            # Read complete relation between visits and exposures. There could
-            # be multiple visits defined per exposure, but they are supposed to
-            # have the same region, so we take one of them at random.
-            records = registry.queryDimensionRecords("visit_definition", instrument=instrument)
-            for record in records:
-                exposure_to_visit[record.exposure] = record.visit
-            _LOG.debug("read %d exposure-to-visit records", len(exposure_to_visit))
-
-        # map exposure to a visit
-        exposure = cast(int, dataId["exposure"])
-        visit = exposure_to_visit.get(exposure)
-        if visit is None:
-            return None
-
-        universe = self.universe
-        detector_dimension = cast(Dimension, universe["detector"])
-        if str(detector_dimension) in dataId:
-            visit_detector_regions = self._visit_detector_regions.get(instrument)
-
-            if visit_detector_regions is None:
-                self._visit_detector_regions[instrument] = visit_detector_regions = {}
-
-                # Read all visits, there is a chance we need most of them
-                # anyways, and trying to filter by dataset type and collection
-                # makes it much slower.
-                records = registry.queryDimensionRecords("visit_detector_region", instrument=instrument)
-                for record in records:
-                    visit_detector_regions[(record.visit, record.detector)] = record.region
-                _LOG.debug("read %d visit-detector regions", len(visit_detector_regions))
-
-            detector = cast(int, dataId["detector"])
-            return visit_detector_regions.get((visit, detector))
-
-        else:
-            visit_regions = self._visit_regions.get(instrument)
-
-            if visit_regions is None:
-                self._visit_regions[instrument] = visit_regions = {}
-
-                # Read all visits, there is a chance we need most of them
-                # anyways, and trying to filter by dataset type and collection
-                # makes it much slower.
-                records = registry.queryDimensionRecords("visit", instrument=instrument)
-                for record in records:
-                    visit_regions[record.id] = record.region
-                _LOG.debug("read %d visit regions", len(visit_regions))
-
-            return visit_regions.get(visit)
+        # Docstring inherited.
+        if dataId == self._data_id:
+            return self._region
+        return None
 
 
 class ObscoreExporter:
@@ -290,10 +254,10 @@ class ObscoreExporter:
 
         self.schema = self._make_schema(schema.table_spec)
 
-        exposure_region_factory = _ExposureRegionFactory(self.butler.registry)
+        self._exposure_region_factory = _ExposureRegionFactory()
         universe = self.butler.dimensions
         self.record_factory = RecordFactory(
-            config, schema, universe, spatial_plugins, exposure_region_factory
+            config, schema, universe, spatial_plugins, self._exposure_region_factory
         )
 
     def to_parquet(self, output: str) -> None:
@@ -494,27 +458,52 @@ class ObscoreExporter:
                 # Want an empty default to match everything.
                 where_clauses = [WhereBind(where="")]
 
+            # Region can come from either visit or visit_detector_region. If we
+            # are looking at exposure then visit will be joined by the query
+            # system.
+            dataset_type = self.butler.get_dataset_type(dataset_type_name)
+            region_key: str | None = None
+            if "exposure" in dataset_type.dimensions or "visit" in dataset_type.dimensions:
+                if "detector" in dataset_type.dimensions:
+                    region_key = "visit_detector_region.region"
+                else:
+                    region_key = "visit.region"
+
             with self.butler.query() as query:
                 for where_clause in where_clauses:
+                    where_query = query
+
                     if where_clause.extra_dims:
-                        query = query.join_dimensions(where_clause.extra_dims)
+                        where_query = where_query.join_dimensions(where_clause.extra_dims)
 
                     if where_clause.where:
                         _LOG.verbose("Processing query with constraint %s", where_clause)
-                        query = query.where(where_clause.where, bind=where_clause.bind)
+                        where_query = where_query.where(where_clause.where, bind=where_clause.bind)
 
-                    refs = query.datasets(dataset_type_name, collections=collections, find_first=True)
+                    where_query = where_query.join_dataset_search(dataset_type_name, collections=collections)
+
+                    region_args = [region_key] if region_key else []
+                    result = where_query.general(
+                        dataset_type.dimensions,
+                        *region_args,
+                        dataset_fields={dataset_type_name: ...},
+                        find_first=True,
+                    )
+
+                    # We need dimension records.
+                    result = result.with_dimension_records()
 
                     if limit is not None:
-                        refs = refs.limit(limit)
+                        result = result.limit(limit)
 
-                    # need dimension records
                     count = 0
-                    for ref in refs.with_dimension_records():
+                    for dataId, (ref,), raw_row in result.iter_tuples(dataset_type):
                         dataId = ref.dataId
-                        _LOG.debug("New record, dataId=%s", dataId.mapping)
+                        region = raw_row[region_key] if region_key else None
+                        _LOG.debug("New record, dataId=%s region=%s", dataId.mapping, region)
                         # _LOG.debug("New record, records=%s", dataId.records)
 
+                        self._exposure_region_factory.set(dataId, region)
                         record = self.record_factory(ref)
                         if record is None:
                             continue
