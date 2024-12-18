@@ -4,7 +4,9 @@ facility_map:
   LSSTComCam: "Rubin:Simonyi"
   LSSTCam: "Rubin:Simonyi"
 obs_collection: LSST.Embargo
-collections: ["LSSTComCam/nightlyValidation"]  # "LSSTComCam/prompt/output-*", "LSSTComCam/runs/DRP/*/w_*/*"
+# The campaign management team is manually maintaining this chained collection
+# as a pointer to the latest DRP pipeline run.
+collections: ["LSSTComCam/SIA"]
 use_butler_uri: false
 dataset_types:
   raw:
