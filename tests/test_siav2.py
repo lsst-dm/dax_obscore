@@ -27,7 +27,8 @@ import lsst.sphgeom
 from astropy.time import Time
 from lsst.daf.butler import Timespan
 from lsst.daf.butler.tests.utils import makeTestTempDir, removeTestTempDir
-from lsst.dax.obscore.siav2 import Interval, SIAv2Parameters, siav2_query_from_raw
+from lsst.dax.obscore.plugins import get_siav2_handler
+from lsst.dax.obscore.siav2 import Interval, SIAv2Handler, SIAv2Parameters, siav2_query_from_raw
 from lsst.dax.obscore.tests import DaxObsCoreTestMixin
 from lsst.utils.iteration import ensure_iterable
 
@@ -206,6 +207,14 @@ class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
                     self.butler, config, collections=["HSC/runs/ci_hsc", "HSC/raw/all"], **kwargs
                 )
                 self.assertVOTable(votable, expected)
+
+    def test_entry_point(self):
+        """Test that a handler can be returned by namespace."""
+        handler = get_siav2_handler("daf_butler")
+        self.assertTrue(issubclass(handler, SIAv2Handler))
+
+        with self.assertRaises(RuntimeError):
+            get_siav2_handler("unknown")
 
 
 if __name__ == "__main__":
