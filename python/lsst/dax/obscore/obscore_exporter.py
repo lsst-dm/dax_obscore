@@ -256,7 +256,7 @@ class ObscoreExporter:
 
         self._exposure_region_factory = _ExposureRegionFactory()
         universe = self.butler.dimensions
-        self.record_factory = RecordFactory(
+        self.record_factory = RecordFactory.get_record_type_from_universe(universe)(
             config, schema, universe, spatial_plugins, self._exposure_region_factory
         )
 
