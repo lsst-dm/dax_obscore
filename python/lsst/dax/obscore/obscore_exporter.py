@@ -38,7 +38,7 @@ import yaml
 from lsst.daf.butler import Butler, DataCoordinate, ddl
 from lsst.daf.butler.formatters.parquet import arrow_to_numpy
 from lsst.daf.butler.registry.obscore import (
-    ExposureRegionFactory,
+    DerivedRegionFactory,
     ObsCoreSchema,
     RecordFactory,
     SpatialObsCorePlugin,
@@ -197,8 +197,8 @@ class _CSVFile(io.BufferedWriter):
         super().close()
 
 
-class _ExposureRegionFactory(ExposureRegionFactory):
-    """Exposure region factory that returns an existing region, region is
+class _DerivedRegionFactory(DerivedRegionFactory):
+    """Region factory that returns an existing region, region is
     specified via `set` method, which should be called before calling
     record factory.
     """
@@ -214,7 +214,7 @@ class _ExposureRegionFactory(ExposureRegionFactory):
         ----------
         data_id : `~lsst.daf.butler.DataCoordinate`
             Data ID that will be matched against parameter of
-            `exposure_region`.
+            `derived_region`.
         region : `Region`
             Corresponding region.
         """
@@ -226,7 +226,7 @@ class _ExposureRegionFactory(ExposureRegionFactory):
         self._data_id = None
         self._region = None
 
-    def exposure_region(self, dataId: DataCoordinate) -> Region | None:
+    def derived_region(self, dataId: DataCoordinate) -> Region | None:
         # Docstring inherited.
         if dataId == self._data_id:
             return self._region
@@ -254,10 +254,10 @@ class ObscoreExporter:
 
         self.schema = self._make_schema(schema.table_spec)
 
-        self._exposure_region_factory = _ExposureRegionFactory()
+        self._derived_region_factory = _DerivedRegionFactory()
         universe = self.butler.dimensions
         self.record_factory = RecordFactory.get_record_type_from_universe(universe)(
-            config, schema, universe, spatial_plugins, self._exposure_region_factory
+            config, schema, universe, spatial_plugins, self._derived_region_factory
         )
 
     def to_parquet(self, output: str) -> None:
@@ -500,7 +500,7 @@ class ObscoreExporter:
                         _LOG.debug("New record, dataId=%s region=%s", dataId.mapping, region)
                         # _LOG.debug("New record, records=%s", dataId.records)
 
-                        self._exposure_region_factory.set(dataId, region)
+                        self._derived_region_factory.set(dataId, region)
                         record = self.record_factory(ref)
                         if record is None:
                             continue
