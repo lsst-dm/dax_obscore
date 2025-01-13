@@ -458,16 +458,13 @@ class ObscoreExporter:
                 # Want an empty default to match everything.
                 where_clauses = [WhereBind(where="")]
 
-            # Region can come from either visit or visit_detector_region. If we
-            # are looking at exposure then visit will be joined by the query
-            # system.
+            # Determine the relevant dimension for the region that can be
+            # joined by the query system.
             dataset_type = self.butler.get_dataset_type(dataset_type_name)
+            region_dim, region_metadata_name = self.record_factory.region_dimension(dataset_type.dimensions)
             region_key: str | None = None
-            if "exposure" in dataset_type.dimensions or "visit" in dataset_type.dimensions:
-                if "detector" in dataset_type.dimensions:
-                    region_key = "visit_detector_region.region"
-                else:
-                    region_key = "visit.region"
+            if region_dim is not None:
+                region_key = f"{region_dim}.{region_metadata_name}"
 
             with self.butler.query() as query:
                 for where_clause in where_clauses:
