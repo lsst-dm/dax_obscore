@@ -35,6 +35,7 @@ import astropy.time
 from lsst.daf.butler import Butler, DimensionGroup, Timespan
 from lsst.daf.butler.pydantic_utils import SerializableRegion, SerializableTime
 from lsst.sphgeom import Region, UnionRegion
+from lsst.utils import inheritDoc
 from lsst.utils.iteration import ensure_iterable
 from lsst.utils.logging import getLogger
 from pydantic import BaseModel, field_validator, model_validator
@@ -272,16 +273,6 @@ class SIAv2Handler:
         info : `dict` [ `str`, `typing.Any` ]
             Dictionary that will be provided to `from_instrument_or_band`
             when calculating the band and instrument queries.
-
-        Notes
-        -----
-        The base class implementation assumes the default dimension universe.
-        Each physical filter is checked against configuration to determine
-        whether it overlaps the requested band. If it does that filter is
-        stored in the returned dict with key ``filters`` where that dict maps
-        instrument names to a set of matching filters. Additionally, the
-        ``bands`` key is a set of bands associated with those filters
-        independent of instrument.
         """
         raise NotImplementedError()
 
@@ -469,9 +460,20 @@ class SIAv2DafButlerHandler(SIAv2Handler):
     def get_all_instruments(self) -> list[str]:
         return [rec.name for rec in self.butler.query_dimension_records("instrument")]
 
+    @inheritDoc(SIAv2Handler)
     def get_band_information(
         self, instruments: list[str], band_intervals: Iterable[Interval]
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any]:  # noqa: D401
+        """
+        Notes
+        -----
+        Each physical filter is checked against configuration to determine
+        whether it overlaps the requested band. If it does that filter is
+        stored in the returned dict with key ``filters`` where that dict maps
+        instrument names to a set of matching filters. Additionally, the
+        ``bands`` key is a set of bands associated with those filters
+        independent of instrument.
+        """  # noqa: D401
         matching_filters = defaultdict(set)
         matching_bands = set()
         with self.butler.query() as query:

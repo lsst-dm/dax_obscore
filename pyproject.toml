@@ -120,9 +120,6 @@ select = [
     "D",  # pydocstyle
     "UP",  # pyupgrade
 ]
-extend-select = [
-    "RUF100", # Warn about unused noqa
-]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 79
@@ -148,6 +145,7 @@ exclude = [
     '^commands\.',  # Click docstrings, not numpydoc
     '^__init__$',
     '\._[a-zA-Z_]+$',  # Private methods.
+    'siav2.SIAv2DafButlerHandler.get_band_information',  # inheritDoc
 ]
 
 [tool.coverage.report]
