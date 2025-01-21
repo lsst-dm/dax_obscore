@@ -63,6 +63,22 @@ If the attribute in the template string does not exist for a particular record t
 ``obscore-export`` will read datasets from Registry using collections specified in ``collections`` configuration attribute and dataset types that appear in ``dataset_types`` attribute (indexed by dataset type names).
 
 
+.. _lsst.dax.obscore-entry_points:
+
+Entry Points
+============
+
+By default the SIAv2 query handler works with the default Butler dimension universe that is named ``daf_butler``.
+Other dimension universes can be supported by providing a subclass to ``lsst.dax.obscore.siav2.SIAv2Handler`` specified in an entry point group named ``dax_obscore.siav2``.
+The entry point label should be the dimension universe namespace.
+
+For example, the default namespace entry point is defined as:
+
+.. code:: toml
+
+    [project.entry-points.'dax_obscore.siav2']
+    daf_butler = "lsst.dax.obscore.siav2:get_daf_butler_siav2_handler"
+
 
 .. _lsst.dax.obscore-pyapi:
 

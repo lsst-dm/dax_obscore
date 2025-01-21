@@ -25,6 +25,7 @@ __all__ = ["SIAv2Handler", "SIAv2Parameters", "siav2_query", "siav2_query_from_r
 
 import math
 import numbers
+from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
 from typing import Any, Self
@@ -34,12 +35,14 @@ import astropy.time
 from lsst.daf.butler import Butler, DimensionGroup, Timespan
 from lsst.daf.butler.pydantic_utils import SerializableRegion, SerializableTime
 from lsst.sphgeom import Region, UnionRegion
+from lsst.utils import inheritDoc
 from lsst.utils.iteration import ensure_iterable
 from lsst.utils.logging import getLogger
 from pydantic import BaseModel, field_validator, model_validator
 
 from .config import ExporterConfig, WhereBind
 from .obscore_exporter import ObscoreExporter
+from .plugins import get_siav2_handler
 
 _LOG = getLogger(__name__)
 _VALID_CALIB = frozenset({0, 1, 2, 3})
@@ -241,6 +244,7 @@ class SIAv2Handler:
         self.config = config
         self.warnings: list[str] = []
 
+    @abstractmethod
     def get_all_instruments(self) -> list[str]:
         """Query butler for all known instruments.
 
@@ -249,8 +253,9 @@ class SIAv2Handler:
         instruments : `list` [ `str` ]
             All the instrument names known to this butler.
         """
-        return [rec.name for rec in self.butler.query_dimension_records("instrument")]
+        raise NotImplementedError()
 
+    @abstractmethod
     def get_band_information(
         self, instruments: list[str], band_intervals: Iterable[Interval]
     ) -> dict[str, Any]:
@@ -268,38 +273,8 @@ class SIAv2Handler:
         info : `dict` [ `str`, `typing.Any` ]
             Dictionary that will be provided to `from_instrument_or_band`
             when calculating the band and instrument queries.
-
-        Notes
-        -----
-        The base class implementation assumes the default dimension universe.
-        Each physical filter is checked against configuration to determine
-        whether it overlaps the requested band. If it does that filter is
-        stored in the returned dict with key ``filters`` where that dict maps
-        instrument names to a set of matching filters. Additionally, the
-        ``bands`` key is a set of bands associated with those filters
-        independent of instrument.
         """
-        matching_filters = defaultdict(set)
-        matching_bands = set()
-        with self.butler.query() as query:
-            records = query.dimension_records("physical_filter")
-            if instruments:
-                records = records.where("instrument in (INSTRUMENTS)", bind={"INSTRUMENTS": instruments})
-            for rec in records:
-                if (spec_range := self.config.spectral_ranges.get(rec.name)) is not None:
-                    spec_interval = Interval(start=spec_range[0], end=spec_range[1])
-                    assert spec_range[0] is not None  # for mypy
-                    assert spec_range[1] is not None
-                    for band_interval in band_intervals:
-                        if band_interval.overlaps(spec_interval):
-                            matching_filters[rec.instrument].add(rec.name)
-                            matching_bands.add(rec.band)
-                else:
-                    self.warnings.append(
-                        f"Ignoring physical filter {rec.name} from instrument {rec.instrument}"
-                        " since it has no defined spectral range"
-                    )
-        return {"filters": matching_filters, "bands": matching_bands}
+        raise NotImplementedError()
 
     def process_query(self, parameters: SIAv2Parameters) -> dict[str, list[WhereBind]]:
         """Process an SIAv2 query.
@@ -386,6 +361,7 @@ class SIAv2Handler:
 
         return dataset_type_wheres
 
+    @abstractmethod
     def from_instrument_or_band(
         self, instruments: list[str], band_info: dict[str, Any], dimensions: DimensionGroup
     ) -> tuple[list[WhereBind], WhereBind | None]:
@@ -410,6 +386,119 @@ class SIAv2Handler:
         general_wheres : `WhereBind` | None
             Query constraint that is not instrument-specific.
         """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def from_pos(self, regions: Sequence[Region], dimensions: DimensionGroup) -> WhereBind | None:
+        """Convert a region request to a butler where clause.
+
+        Parameters
+        ----------
+        regions : `~collections.abc.Iterable` [ `lsst.sphgeom.Region` ]
+            The region of interest.
+        dimensions : `lsst.daf.butler.DimensionGroup`
+            The dimensions for the dataset type being queried.
+
+        Returns
+        -------
+        where : `WhereBind` or `None`
+            The where clause or `None` if region is not supported by this
+            dataset type.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def from_time(
+        self, ts: Iterable[astropy.time.Time | Timespan], dimensions: DimensionGroup
+    ) -> WhereBind | None:
+        """Convert a time span to a butler where clause.
+
+        Parameters
+        ----------
+        ts : `~collections.abc.Iterable` of \
+                [ `astropy.time.Time` | `lsst.daf.butler.Timespan` ]
+            The times of interest.
+        dimensions : `lsst.daf.butler.DimensionGroup`
+            The dimensions for the dataset type being queried.
+
+        Returns
+        -------
+        where : `WhereBind` or `None`
+            The where clause or `None` if time is not supported by this
+            dataset type.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def from_exptime(
+        self, exptime_intervals: Iterable[Interval], dimensions: DimensionGroup
+    ) -> WhereBind | None:
+        """Convert an exposure time interval to a butler where clause.
+
+        Parameters
+        ----------
+        exptime_intervals : `~collections.abc.Iterable` [ `Interval` ]
+            The exposure time interval of interest as two floating point UTC
+            MJDs.
+        dimensions : `lsst.daf.butler.DimensionGroup`
+            The dimensions for the dataset type being queried.
+
+        Returns
+        -------
+        wheres : `WhereBind` or `None`
+            The where clause for the exposure times, or `None` if the dataset
+            type does not understand exposure time.
+        """
+        raise NotImplementedError()
+
+
+class SIAv2DafButlerHandler(SIAv2Handler):
+    """Process SIAv2 query parameters using the daf_butler dimension universe
+    and convert into Butler query constraints.
+    """
+
+    def get_all_instruments(self) -> list[str]:
+        return [rec.name for rec in self.butler.query_dimension_records("instrument")]
+
+    @inheritDoc(SIAv2Handler)
+    def get_band_information(
+        self, instruments: list[str], band_intervals: Iterable[Interval]
+    ) -> dict[str, Any]:  # noqa: D401
+        """
+        Notes
+        -----
+        Each physical filter is checked against configuration to determine
+        whether it overlaps the requested band. If it does that filter is
+        stored in the returned dict with key ``filters`` where that dict maps
+        instrument names to a set of matching filters. Additionally, the
+        ``bands`` key is a set of bands associated with those filters
+        independent of instrument.
+        """  # noqa: D401
+        matching_filters = defaultdict(set)
+        matching_bands = set()
+        with self.butler.query() as query:
+            records = query.dimension_records("physical_filter")
+            if instruments:
+                records = records.where("instrument in (INSTRUMENTS)", bind={"INSTRUMENTS": instruments})
+            for rec in records:
+                if (spec_range := self.config.spectral_ranges.get(rec.name)) is not None:
+                    spec_interval = Interval(start=spec_range[0], end=spec_range[1])
+                    assert spec_range[0] is not None  # for mypy
+                    assert spec_range[1] is not None
+                    for band_interval in band_intervals:
+                        if band_interval.overlaps(spec_interval):
+                            matching_filters[rec.instrument].add(rec.name)
+                            matching_bands.add(rec.band)
+                else:
+                    self.warnings.append(
+                        f"Ignoring physical filter {rec.name} from instrument {rec.instrument}"
+                        " since it has no defined spectral range"
+                    )
+        return {"filters": matching_filters, "bands": matching_bands}
+
+    def from_instrument_or_band(
+        self, instruments: list[str], band_info: dict[str, Any], dimensions: DimensionGroup
+    ) -> tuple[list[WhereBind], WhereBind | None]:
         instrument_wheres = []
         general_where: WhereBind | None = None
         if "instrument" in dimensions and instruments:
@@ -435,21 +524,6 @@ class SIAv2Handler:
         return instrument_wheres, general_where
 
     def from_pos(self, regions: Sequence[Region], dimensions: DimensionGroup) -> WhereBind | None:
-        """Convert a region request to a butler where clause.
-
-        Parameters
-        ----------
-        regions : `~collections.abc.Iterable` [ `lsst.sphgeom.Region` ]
-            The region of interest.
-        dimensions : `lsst.daf.butler.DimensionGroup`
-            The dimensions for the dataset type being queried.
-
-        Returns
-        -------
-        where : `WhereBind` or `None`
-            The where clause or `None` if region is not supported by this
-            dataset type.
-        """
         extra_dims = set()
         region_dim = dimensions.region_dimension
         if not region_dim:
@@ -479,22 +553,6 @@ class SIAv2Handler:
     def from_time(
         self, ts: Iterable[astropy.time.Time | Timespan], dimensions: DimensionGroup
     ) -> WhereBind | None:
-        """Convert a time span to a butler where clause.
-
-        Parameters
-        ----------
-        ts : `~collections.abc.Iterable` of \
-                [ `astropy.time.Time` | `lsst.daf.butler.Timespan` ]
-            The times of interest.
-        dimensions : `lsst.daf.butler.DimensionGroup`
-            The dimensions for the dataset type being queried.
-
-        Returns
-        -------
-        where : `WhereBind` or `None`
-            The where clause or `None` if time is not supported by this
-            dataset type.
-        """
         time_dim = dimensions.timespan_dimension
         if not time_dim:
             return None
@@ -507,22 +565,6 @@ class SIAv2Handler:
     def from_exptime(
         self, exptime_intervals: Iterable[Interval], dimensions: DimensionGroup
     ) -> WhereBind | None:
-        """Convert an exposure time interval to a butler where clause.
-
-        Parameters
-        ----------
-        exptime_intervals : `~collections.abc.Iterable` [ `Interval` ]
-            The exposure time interval of interest as two floating point UTC
-            MJDs.
-        dimensions : `lsst.daf.butler.DimensionGroup`
-            The dimensions for the dataset type being queried.
-
-        Returns
-        -------
-        wheres : `WhereBind` or `None`
-            The where clause for the exposure times, or `None` if the dataset
-            type does not understand exposure time.
-        """
         if "exposure" in dimensions:
             exp_dim = "exposure"
         elif "visit" in dimensions:
@@ -541,6 +583,18 @@ class SIAv2Handler:
             # No constraint of exposure time (e.g., -Inf +Inf).
             return WhereBind()
         return WhereBind.combine(wheres, mode="OR")
+
+
+def get_daf_butler_siav2_handler() -> type[SIAv2Handler]:
+    """Return the SIAv2 handler specifically designed for the daf_butler
+    namespace.
+
+    Returns
+    -------
+    handler : `type` [ `lsst.dax.obscore.siav2.SIAv2Handler` ]
+        The handler to be used for daf_butler universes.
+    """
+    return SIAv2DafButlerHandler
 
 
 def siav2_query_from_raw(
@@ -686,7 +740,8 @@ def siav2_query(
 
     _LOG.verbose("Received parameters: %s", parameters)
 
-    handler = SIAv2Handler(butler, cfg)
+    handler_type = get_siav2_handler(butler.dimensions.namespace)
+    handler = handler_type(butler, cfg)
     cfg.dataset_type_constraints = handler.process_query(parameters)
 
     # Downselect the dataset types being queried -- a missing constraint

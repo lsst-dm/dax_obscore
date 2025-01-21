@@ -37,6 +37,8 @@ dynamic = ["version"]
 
 [project.entry-points.'butler.cli']
 dax_obscore = "lsst.dax.obscore.cli:get_cli_subcommands"
+[project.entry-points.'dax_obscore.siav2']
+daf_butler = "lsst.dax.obscore.siav2:get_daf_butler_siav2_handler"
 
 [project.urls]
 "Homepage" = "https://github.com/lsst-dm/dax_obscore"
@@ -118,9 +120,6 @@ select = [
     "D",  # pydocstyle
     "UP",  # pyupgrade
 ]
-extend-select = [
-    "RUF100", # Warn about unused noqa
-]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 79
@@ -146,4 +145,14 @@ exclude = [
     '^commands\.',  # Click docstrings, not numpydoc
     '^__init__$',
     '\._[a-zA-Z_]+$',  # Private methods.
+    'siav2.SIAv2DafButlerHandler.get_band_information',  # inheritDoc
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
 ]
