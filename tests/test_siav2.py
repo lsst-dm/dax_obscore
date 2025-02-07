@@ -23,8 +23,9 @@ import math
 import os
 import unittest
 
-import lsst.sphgeom
 from astropy.time import Time
+
+import lsst.sphgeom
 from lsst.daf.butler import Timespan
 from lsst.daf.butler.tests.utils import makeTestTempDir, removeTestTempDir
 from lsst.dax.obscore.plugins import get_siav2_handler

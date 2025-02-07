@@ -35,6 +35,12 @@ import felis.datamodel
 import pyarrow
 import sqlalchemy
 import yaml
+from numpy import ma
+from pyarrow import RecordBatch, Schema
+from pyarrow import Table as ArrowTable
+from pyarrow.csv import CSVWriter, WriteOptions
+from pyarrow.parquet import ParquetWriter
+
 from lsst.daf.butler import Butler, DataCoordinate, ddl
 from lsst.daf.butler.formatters.parquet import arrow_to_numpy
 from lsst.daf.butler.registry.obscore import (
@@ -46,11 +52,6 @@ from lsst.daf.butler.registry.obscore import (
 from lsst.resources import ResourcePath
 from lsst.sphgeom import Region
 from lsst.utils.logging import getLogger
-from numpy import ma
-from pyarrow import RecordBatch, Schema
-from pyarrow import Table as ArrowTable
-from pyarrow.csv import CSVWriter, WriteOptions
-from pyarrow.parquet import ParquetWriter
 
 from . import ExporterConfig
 from .config import WhereBind

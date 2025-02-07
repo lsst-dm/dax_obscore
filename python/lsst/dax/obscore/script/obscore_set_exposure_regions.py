@@ -27,6 +27,7 @@ from collections.abc import Collection, MutableMapping
 from typing import Any
 
 import sqlalchemy
+
 from lsst.daf.butler import Butler
 from lsst.sphgeom import Region
 from lsst.utils.iteration import chunk_iterable
