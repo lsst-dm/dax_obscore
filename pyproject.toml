@@ -120,7 +120,11 @@ select = [
     "W",  # pycodestyle
     "D",  # pydocstyle
     "UP",  # pyupgrade
+    "I",  # isort
 ]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lsst"]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 79
