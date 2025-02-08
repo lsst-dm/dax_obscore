@@ -122,6 +122,7 @@ select = [
     "UP",  # pyupgrade
     "I",  # isort
     "RUF022",  # sort __ALL__
+    "B",  # bugbear
 ]
 
 [tool.ruff.lint.isort]
