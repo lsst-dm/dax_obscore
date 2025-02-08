@@ -123,6 +123,7 @@ select = [
     "I",  # isort
     "RUF022",  # sort __ALL__
     "B",  # bugbear
+    "C4",  # comprehensions
 ]
 
 [tool.ruff.lint.isort]
