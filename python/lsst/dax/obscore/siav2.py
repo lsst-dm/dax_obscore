@@ -32,13 +32,14 @@ from typing import Any, Self
 
 import astropy.io.votable
 import astropy.time
+from pydantic import BaseModel, field_validator, model_validator
+
 from lsst.daf.butler import Butler, DimensionGroup, Timespan
 from lsst.daf.butler.pydantic_utils import SerializableRegion, SerializableTime
 from lsst.sphgeom import Region, UnionRegion
 from lsst.utils import inheritDoc
 from lsst.utils.iteration import ensure_iterable
 from lsst.utils.logging import getLogger
-from pydantic import BaseModel, field_validator, model_validator
 
 from .config import ExporterConfig, WhereBind
 from .obscore_exporter import ObscoreExporter

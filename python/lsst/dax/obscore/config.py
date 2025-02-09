@@ -26,8 +26,9 @@ __all__ = ["ExporterConfig"]
 from collections.abc import Iterable
 from typing import Any, Literal
 
-from lsst.daf.butler.registry.obscore import ObsCoreConfig
 from pydantic import BaseModel, ConfigDict, Field
+
+from lsst.daf.butler.registry.obscore import ObsCoreConfig
 
 
 class WhereBind(BaseModel):

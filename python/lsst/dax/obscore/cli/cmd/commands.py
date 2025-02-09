@@ -22,6 +22,7 @@
 from typing import Any
 
 import click
+
 from lsst.daf.butler.cli.opt import (
     collections_option,
     dataset_type_option,

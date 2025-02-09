@@ -72,6 +72,7 @@ target-version = ["py311"]
 [tool.isort]
 profile = "black"
 line_length = 110
+known_first_party = ["lsst"]
 
 [tool.lsst_versions]
 write_to = "python/lsst/dax/obscore/version.py"
@@ -119,13 +120,24 @@ select = [
     "W",  # pycodestyle
     "D",  # pydocstyle
     "UP",  # pyupgrade
+    "I",  # isort
+    "RUF022",  # sort __ALL__
+    "B",  # bugbear
+    "C4",  # comprehensions
 ]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lsst"]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 79
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 79
 
 [tool.numpydoc_validation]
 checks = [

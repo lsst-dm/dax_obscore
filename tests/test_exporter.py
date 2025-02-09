@@ -26,6 +26,7 @@ import unittest
 import astropy.io.votable
 import pyarrow
 import pyarrow.parquet
+
 from lsst.daf.butler.registry.obscore import DatasetTypeConfig
 from lsst.daf.butler.registry.obscore._schema import _STATIC_COLUMNS
 from lsst.daf.butler.tests.utils import makeTestTempDir, removeTestTempDir

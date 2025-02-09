@@ -27,6 +27,7 @@ from collections.abc import Collection, MutableMapping
 from typing import Any
 
 import sqlalchemy
+
 from lsst.daf.butler import Butler
 from lsst.sphgeom import Region
 from lsst.utils.iteration import chunk_iterable
@@ -108,9 +109,7 @@ def obscore_set_exposure_regions(
     if check:
         # Just print count and stop here.
         count = _count_missing()
-        print(
-            f"Found {count} records with missing region info for" f" {dataproduct_type}/{dataproduct_subtype}"
-        )
+        print(f"Found {count} records with missing region info for {dataproduct_type}/{dataproduct_subtype}")
         return
 
     # Select all exposures with missing regions with all detectors for that
