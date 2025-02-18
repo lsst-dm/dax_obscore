@@ -1,0 +1,65 @@
+facility_name: Rubin:Simonyi
+facility_map:
+  LSSTComCam: "Rubin:Simonyi"
+obs_collection: LSST.DP1
+collections: ["LSSTComCam/DP1"]
+use_butler_uri: false
+dataset_types:
+  raw:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.raw
+    calib_level: 1
+    obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
+    o_ucd: phot.count
+    access_format: "application/x-votable+xml;content=datalink"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
+  pvi:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.pvi
+    calib_level: 2
+    obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
+    o_ucd: phot.count
+    access_format: "application/x-votable+xml;content=datalink"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
+  deepCoadd_calexp:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.deepCoadd_calexp
+    calib_level: 3
+    obs_id_fmt: "{skymap}-{tract}-{patch}"
+    o_ucd: phot.count
+    access_format: "application/x-votable+xml;content=datalink"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
+  goodSeeingCoadd:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.goodSeeingCoadd
+    calib_level: 3
+    obs_id_fmt: "{skymap}-{tract}-{patch}"
+    o_ucd: phot.count
+    access_format: "application/x-votable+xml;content=datalink"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
+extra_columns:
+  lsst_visit:
+    template: "{visit}"
+    type: "int"
+  lsst_detector:
+    template: "{detector}"
+    type: "int"
+  lsst_tract:
+    template: "{tract}"
+    type: "int"
+  lsst_patch:
+    template: "{patch}"
+    type: "int"
+  lsst_band:
+    template: "{band}"
+    type: "string"
+  lsst_filter:
+    template: "{physical_filter}"
+    type: "string"
+spectral_ranges:
+  "u": [330.0e-9, 400.0e-9]
+  "g": [402.0e-9, 552.0e-9]
+  "r": [552.0e-9, 691.0e-9]
+  "i": [691.0e-9, 818.0e-9]
+  "z": [818.0e-9, 922.0e-9]
+  "y": [970.0e-9, 1060.0e-9]
