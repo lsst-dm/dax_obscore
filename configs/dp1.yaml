@@ -13,25 +13,25 @@ dataset_types:
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
-  pvi:
+  visit_image:
     dataproduct_type: image
-    dataproduct_subtype: lsst.pvi
+    dataproduct_subtype: lsst.visit_image
     calib_level: 2
     obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
-  deepCoadd_calexp:
+  deep_coadd:
     dataproduct_type: image
-    dataproduct_subtype: lsst.deepCoadd_calexp
+    dataproduct_subtype: lsst.deep_coadd
     calib_level: 3
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
-  goodSeeingCoadd:
+  template_coadd:
     dataproduct_type: image
-    dataproduct_subtype: lsst.goodSeeingCoadd
+    dataproduct_subtype: lsst.template_coadd
     calib_level: 3
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.count
