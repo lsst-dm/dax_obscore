@@ -8,6 +8,16 @@ lsst.dax.obscore
 
 This package implements ``butler`` CLI plugin ``obscore-export`` which generates ``ObsCore`` data model from Butler registry.
 
+.. _lsst.dax.obscore-changes:
+
+Changes
+=======
+
+.. toctree::
+   :maxdepth: 1
+
+   CHANGES.rst
+
 .. _lsst.dax.obscore-cli:
 
 .. click:: lsst.daf.butler.cli.butler:cli
