@@ -12,7 +12,7 @@ dataset_types:
     obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
   visit_image:
     dataproduct_type: image
     dataproduct_subtype: lsst.visit_image
@@ -20,7 +20,7 @@ dataset_types:
     obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
   deep_coadd:
     dataproduct_type: image
     dataproduct_subtype: lsst.deep_coadd
@@ -28,7 +28,7 @@ dataset_types:
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
   template_coadd:
     dataproduct_type: image
     dataproduct_subtype: lsst.template_coadd
@@ -36,7 +36,7 @@ dataset_types:
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Fusdac%2Fdp1%3Frepo%3Ddp1%26id%3D{id}"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
 extra_columns:
   lsst_visit:
     template: "{visit}"
