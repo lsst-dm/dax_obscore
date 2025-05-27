@@ -482,7 +482,12 @@ class SIAv2DafButlerHandler(SIAv2Handler):
             if instruments:
                 records = records.where("instrument in (INSTRUMENTS)", bind={"INSTRUMENTS": instruments})
             for rec in records:
-                if (spec_range := self.config.spectral_ranges.get(rec.name)) is not None:
+                # Prefer physical filter spectral range but fall back to band.
+                spec_range = None
+                for name in (rec.name, rec.band):
+                    if (spec_range := self.config.spectral_ranges.get(name)) is not None:
+                        break
+                if spec_range is not None:
                     spec_interval = Interval(start=spec_range[0], end=spec_range[1])
                     assert spec_range[0] is not None  # for mypy
                     assert spec_range[1] is not None
