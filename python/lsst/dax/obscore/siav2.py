@@ -126,6 +126,7 @@ class SIAv2Parameters(BaseModel):
     facility: tuple[str, ...] = ()
     instrument: tuple[str, ...] = ()
     dptype: frozenset[str] = frozenset()
+    dpsubtype: tuple[str, ...] = ()
     calib: frozenset[int] = frozenset()
     target: tuple[str, ...] = ()
     maxrec: int | None = None
@@ -174,6 +175,7 @@ class SIAv2Parameters(BaseModel):
         calib: Iterable[numbers.Integral] | numbers.Integral = (),
         target: Iterable[str] | str = (),
         maxrec: str | numbers.Integral | None = None,
+        dpsubtype: Iterable[str] | str = (),
     ) -> Self:
         parsed: dict[str, Any] = {}
         if instrument:
@@ -221,6 +223,8 @@ class SIAv2Parameters(BaseModel):
             parsed["facility"] = ensure_iterable(facility)
         if dptype:
             parsed["dptype"] = ensure_iterable(dptype)
+        if dpsubtype:
+            parsed["dpsubtype"] = ensure_iterable(dpsubtype)
         if target:
             parsed["target"] = ensure_iterable(target)
         if maxrec is not None:
@@ -295,6 +299,23 @@ class SIAv2Handler:
         """
         # Reset warnings log.
         self.warnings = []
+
+        # Check early that there are any matches for selected sub types. Can
+        # skip the query if nothing matches.
+        dp_sub_types = set(parameters.dpsubtype)
+        if dp_sub_types:
+            known_sub_types = {
+                c.dataproduct_subtype
+                for c in self.config.dataset_types.values()
+                if c.dataproduct_subtype is not None
+            }
+            if dp_sub_types.isdisjoint(known_sub_types):
+                self.warnings.append(
+                    f"Requested DPSUBTYPE ({', '.join(dp_sub_types)}) not known to this configuration"
+                    f" containing {', '.join(known_sub_types)!r}. No matching records can be returned."
+                )
+                return {}
+
         if parameters.instrument:
             instruments = list(parameters.instrument)
         else:
@@ -310,6 +331,10 @@ class SIAv2Handler:
         # Loop over each dataset type calculating custom query parameters.
         dataset_type_wheres = {}
         for dataset_type_name in list(self.config.dataset_types):
+            if dp_sub_types:
+                dataset_type_config = self.config.dataset_types[dataset_type_name]
+                if dataset_type_config.dataproduct_subtype not in dp_sub_types:
+                    continue
             if parameters.calib:
                 dataset_type_config = self.config.dataset_types[dataset_type_name]
                 if dataset_type_config.calib_level not in parameters.calib:
@@ -626,6 +651,7 @@ def siav2_query_from_raw(
     maxrec: str | numbers.Integral | None = None,
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
+    dpsubtype: Iterable[str] = (),
 ) -> astropy.io.votable.tree.VOTableFile:
     """Run SIAv2 query with raw parameters and return results as VOTable.
 
@@ -678,6 +704,8 @@ def siav2_query_from_raw(
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
         Names of Butler dataset types to include in query.
+    dpsubtype : `~collections.abc.Iterable` [ `str` ], optional
+        ObsCore data product sub type. An extension to the standard.
 
     Returns
     -------
@@ -701,6 +729,7 @@ def siav2_query_from_raw(
         facility=facility,
         calib=calib,
         dptype=dptype,
+        dpsubtype=dpsubtype,
         target=target,
         maxrec=maxrec,
     )
@@ -751,7 +780,8 @@ def siav2_query(
     cfg.dataset_type_constraints = handler.process_query(parameters)
 
     # Downselect the dataset types being queried -- a missing constraint
-    # means that the dataset type is being skipped.
+    # means that the dataset type is being skipped. If we have no dataset type
+    # queries at all we will return no records.
     cfg.select_dataset_types(cfg.dataset_type_constraints.keys())
 
     exporter = ObscoreExporter(butler, cfg)

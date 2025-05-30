@@ -195,6 +195,9 @@ class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
             ({"calib": {2}}, 33),
             ({"calib": {3}}, 2),
             ({"calib": {1}}, 33),
+            ({"dpsubtype": "lsst.coadd"}, 0),
+            ({"dpsubtype": "lsst.deepCoadd"}, 2),
+            ({"dpsubtype": "lsst.deepCoadd", "calib": 2}, 0),
         ):
             with self.subTest(kwargs=kwargs, expected=expected):
                 votable = siav2_query_from_raw(
