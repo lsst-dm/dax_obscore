@@ -281,6 +281,66 @@ class SIAv2Handler:
         """
         raise NotImplementedError()
 
+    def _filter_dataset_types(
+        self,
+        property: str,
+        public_name: str,
+        query_values: Iterable[str] | Iterable[int],
+        dataset_type_names: list[str],
+        previous_reasons: list[str],
+    ) -> list[str]:
+        """Filter dataset types based on configuration properties.
+
+        Parameters
+        ----------
+        property : `str`
+            The name of the `DatasetTypeConfig` property to use for comparison.
+        public_name : `str`
+            The corresponding name of the property in the SIAv2 standard.
+        query_values : `~collections.abc.Iterable`
+            The values that are required to match for this property for the
+            dataset type to be included in subsequent queries.
+        dataset_type_names : `list` [ `str` ]
+            The names of dataset types to be checked against the configuration.
+        previous_reasons : `list` [ `str` ]
+            Collection of reasons for why the list of dataset type names has
+            previously been filtered. Can be empty. May be modified.
+
+        Returns
+        -------
+        names : `list` [ `str` ]
+            The dataset type names after filtering.
+        """
+        if not query_values:
+            # No filtering. Return the original dataset type names.
+            return dataset_type_names
+        if not dataset_type_names:
+            # Nothing to filter on.
+            return dataset_type_names
+
+        required_values: set[str | int] = set(query_values)
+        required_values_msg = ", ".join(str(v) for v in sorted(required_values))
+
+        filtered_dataset_type_names = {
+            dt
+            for dt in dataset_type_names
+            if getattr(self.config.dataset_types[dt], property) in required_values
+        }
+        if not filtered_dataset_type_names:
+            previously = " "
+            if previous_reasons:
+                previously = " in addition to being " + " and ".join(previous_reasons)
+            self.warnings.append(
+                f"Requested {public_name} ({required_values_msg}){previously}"
+                "removes all possible datasets from query. No matching records can be returned."
+            )
+            return []
+        if len(dataset_type_names) != len(filtered_dataset_type_names):
+            dataset_type_names = list(filtered_dataset_type_names)
+            previous_reasons.append(f"filtered via {public_name} specification ({required_values_msg}) ")
+
+        return dataset_type_names
+
     def process_query(self, parameters: SIAv2Parameters) -> dict[str, list[WhereBind]]:
         """Process an SIAv2 query.
 
@@ -300,21 +360,21 @@ class SIAv2Handler:
         # Reset warnings log.
         self.warnings = []
 
-        # Check early that there are any matches for selected sub types. Can
-        # skip the query if nothing matches.
-        dp_sub_types = set(parameters.dpsubtype)
-        if dp_sub_types:
-            known_sub_types = {
-                c.dataproduct_subtype
-                for c in self.config.dataset_types.values()
-                if c.dataproduct_subtype is not None
-            }
-            if dp_sub_types.isdisjoint(known_sub_types):
-                self.warnings.append(
-                    f"Requested DPSUBTYPE ({', '.join(dp_sub_types)}) not known to this configuration"
-                    f" containing {', '.join(known_sub_types)!r}. No matching records can be returned."
-                )
-                return {}
+        # DPTYPE, DPSUBTYPE, and CALIB are at the dataset type level and so
+        # we can pre-filter the dataset types immediately to short circuit
+        # queries that will never return anything.
+        previous_reasons: list[str] = []  # Reason previous filtering occurred.
+        dataset_type_names = self._filter_dataset_types(
+            "dataproduct_type", "DPTYPE", parameters.dptype, list(self.config.dataset_types), previous_reasons
+        )
+        dataset_type_names = self._filter_dataset_types(
+            "dataproduct_subtype", "DPSUBTYPE", parameters.dpsubtype, dataset_type_names, previous_reasons
+        )
+        dataset_type_names = self._filter_dataset_types(
+            "calib_level", "CALIB", parameters.calib, dataset_type_names, previous_reasons
+        )
+        if not dataset_type_names:
+            return {}
 
         if parameters.instrument:
             instruments = list(parameters.instrument)
@@ -330,16 +390,7 @@ class SIAv2Handler:
 
         # Loop over each dataset type calculating custom query parameters.
         dataset_type_wheres = {}
-        for dataset_type_name in list(self.config.dataset_types):
-            if dp_sub_types:
-                dataset_type_config = self.config.dataset_types[dataset_type_name]
-                if dataset_type_config.dataproduct_subtype not in dp_sub_types:
-                    continue
-            if parameters.calib:
-                dataset_type_config = self.config.dataset_types[dataset_type_name]
-                if dataset_type_config.calib_level not in parameters.calib:
-                    continue
-
+        for dataset_type_name in dataset_type_names:
             wheres = []
             dataset_type = self.butler.get_dataset_type(dataset_type_name)
             dims = dataset_type.dimensions

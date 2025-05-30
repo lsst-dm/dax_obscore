@@ -217,6 +217,12 @@ def update_table(*args: Any, **kwargs: Any) -> None:
     multiple=True,
     type=str,
 )
+@click.option(
+    "--dptype",
+    help="Data product type to select. Usually image or cube.",
+    multiple=True,
+    type=str,
+)
 @options_file_option()
 def siav2(*args: Any, **kwargs: Any) -> None:
     """Export Butler datasets as ObsCore Data Model in VOTable format.
