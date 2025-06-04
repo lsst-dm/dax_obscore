@@ -126,6 +126,7 @@ class SIAv2Parameters(BaseModel):
     facility: tuple[str, ...] = ()
     instrument: tuple[str, ...] = ()
     dptype: frozenset[str] = frozenset()
+    dpsubtype: tuple[str, ...] = ()
     calib: frozenset[int] = frozenset()
     target: tuple[str, ...] = ()
     maxrec: int | None = None
@@ -174,6 +175,7 @@ class SIAv2Parameters(BaseModel):
         calib: Iterable[numbers.Integral] | numbers.Integral = (),
         target: Iterable[str] | str = (),
         maxrec: str | numbers.Integral | None = None,
+        dpsubtype: Iterable[str] | str = (),
     ) -> Self:
         parsed: dict[str, Any] = {}
         if instrument:
@@ -221,6 +223,8 @@ class SIAv2Parameters(BaseModel):
             parsed["facility"] = ensure_iterable(facility)
         if dptype:
             parsed["dptype"] = ensure_iterable(dptype)
+        if dpsubtype:
+            parsed["dpsubtype"] = ensure_iterable(dpsubtype)
         if target:
             parsed["target"] = ensure_iterable(target)
         if maxrec is not None:
@@ -277,6 +281,66 @@ class SIAv2Handler:
         """
         raise NotImplementedError()
 
+    def _filter_dataset_types(
+        self,
+        property: str,
+        public_name: str,
+        query_values: Iterable[str] | Iterable[int],
+        dataset_type_names: list[str],
+        previous_reasons: list[str],
+    ) -> list[str]:
+        """Filter dataset types based on configuration properties.
+
+        Parameters
+        ----------
+        property : `str`
+            The name of the `DatasetTypeConfig` property to use for comparison.
+        public_name : `str`
+            The corresponding name of the property in the SIAv2 standard.
+        query_values : `~collections.abc.Iterable`
+            The values that are required to match for this property for the
+            dataset type to be included in subsequent queries.
+        dataset_type_names : `list` [ `str` ]
+            The names of dataset types to be checked against the configuration.
+        previous_reasons : `list` [ `str` ]
+            Collection of reasons for why the list of dataset type names has
+            previously been filtered. Can be empty. May be modified.
+
+        Returns
+        -------
+        names : `list` [ `str` ]
+            The dataset type names after filtering.
+        """
+        if not query_values:
+            # No filtering. Return the original dataset type names.
+            return dataset_type_names
+        if not dataset_type_names:
+            # Nothing to filter on.
+            return dataset_type_names
+
+        required_values: set[str | int] = set(query_values)
+        required_values_msg = ", ".join(str(v) for v in sorted(required_values))
+
+        filtered_dataset_type_names = {
+            dt
+            for dt in dataset_type_names
+            if getattr(self.config.dataset_types[dt], property) in required_values
+        }
+        if not filtered_dataset_type_names:
+            previously = " "
+            if previous_reasons:
+                previously = " in addition to being " + " and ".join(previous_reasons)
+            self.warnings.append(
+                f"Requested {public_name} ({required_values_msg}){previously}"
+                "removes all possible datasets from query. No matching records can be returned."
+            )
+            return []
+        if len(dataset_type_names) != len(filtered_dataset_type_names):
+            dataset_type_names = list(filtered_dataset_type_names)
+            previous_reasons.append(f"filtered via {public_name} specification ({required_values_msg}) ")
+
+        return dataset_type_names
+
     def process_query(self, parameters: SIAv2Parameters) -> dict[str, list[WhereBind]]:
         """Process an SIAv2 query.
 
@@ -295,6 +359,23 @@ class SIAv2Handler:
         """
         # Reset warnings log.
         self.warnings = []
+
+        # DPTYPE, DPSUBTYPE, and CALIB are at the dataset type level and so
+        # we can pre-filter the dataset types immediately to short circuit
+        # queries that will never return anything.
+        previous_reasons: list[str] = []  # Reason previous filtering occurred.
+        dataset_type_names = self._filter_dataset_types(
+            "dataproduct_type", "DPTYPE", parameters.dptype, list(self.config.dataset_types), previous_reasons
+        )
+        dataset_type_names = self._filter_dataset_types(
+            "dataproduct_subtype", "DPSUBTYPE", parameters.dpsubtype, dataset_type_names, previous_reasons
+        )
+        dataset_type_names = self._filter_dataset_types(
+            "calib_level", "CALIB", parameters.calib, dataset_type_names, previous_reasons
+        )
+        if not dataset_type_names:
+            return {}
+
         if parameters.instrument:
             instruments = list(parameters.instrument)
         else:
@@ -309,12 +390,7 @@ class SIAv2Handler:
 
         # Loop over each dataset type calculating custom query parameters.
         dataset_type_wheres = {}
-        for dataset_type_name in list(self.config.dataset_types):
-            if parameters.calib:
-                dataset_type_config = self.config.dataset_types[dataset_type_name]
-                if dataset_type_config.calib_level not in parameters.calib:
-                    continue
-
+        for dataset_type_name in dataset_type_names:
             wheres = []
             dataset_type = self.butler.get_dataset_type(dataset_type_name)
             dims = dataset_type.dimensions
@@ -626,6 +702,7 @@ def siav2_query_from_raw(
     maxrec: str | numbers.Integral | None = None,
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
+    dpsubtype: Iterable[str] = (),
 ) -> astropy.io.votable.tree.VOTableFile:
     """Run SIAv2 query with raw parameters and return results as VOTable.
 
@@ -678,6 +755,8 @@ def siav2_query_from_raw(
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
         Names of Butler dataset types to include in query.
+    dpsubtype : `~collections.abc.Iterable` [ `str` ], optional
+        ObsCore data product sub type. An extension to the standard.
 
     Returns
     -------
@@ -701,6 +780,7 @@ def siav2_query_from_raw(
         facility=facility,
         calib=calib,
         dptype=dptype,
+        dpsubtype=dpsubtype,
         target=target,
         maxrec=maxrec,
     )
@@ -751,7 +831,8 @@ def siav2_query(
     cfg.dataset_type_constraints = handler.process_query(parameters)
 
     # Downselect the dataset types being queried -- a missing constraint
-    # means that the dataset type is being skipped.
+    # means that the dataset type is being skipped. If we have no dataset type
+    # queries at all we will return no records.
     cfg.select_dataset_types(cfg.dataset_type_constraints.keys())
 
     exporter = ObscoreExporter(butler, cfg)

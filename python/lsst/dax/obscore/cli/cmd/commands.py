@@ -164,7 +164,9 @@ def update_table(*args: Any, **kwargs: Any) -> None:
 @dataset_type_option(
     help=(
         "Comma-separated list of Butler dataset types. "
-        "If specified it must be a subset of dataset types defined in configuration file."
+        "If specified it must be a subset of dataset types defined in configuration file. "
+        "To more closely match the SIAv2 formal interface, consider using --dpsubtype instead. "
+        "The --dataset-type filter is applied before the --dpsubtype filter."
     )
 )
 @collections_option(
@@ -206,6 +208,20 @@ def update_table(*args: Any, **kwargs: Any) -> None:
     "--maxrec",
     help="Maximum number of records to return. 0 means no records.",
     type=int,
+)
+@click.option(
+    "--dpsubtype",
+    help="Data product sub types to select. If specified, must be present in configuration."
+    " To avoid confusion, consider specifying either this option or --dataset-type, and not both."
+    " The --dataset-type filter is applied before the --dpsubtype filter.",
+    multiple=True,
+    type=str,
+)
+@click.option(
+    "--dptype",
+    help="Data product type to select. Usually image or cube.",
+    multiple=True,
+    type=str,
 )
 @options_file_option()
 def siav2(*args: Any, **kwargs: Any) -> None:
