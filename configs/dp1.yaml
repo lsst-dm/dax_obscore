@@ -4,6 +4,7 @@ facility_map:
 obs_collection: LSST.DP1
 collections: ["LSSTComCam/DP1"]
 use_butler_uri: false
+fallback_instrument: LSSTComCam
 dataset_types:
   raw:
     dataproduct_type: image

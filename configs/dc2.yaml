@@ -2,6 +2,7 @@ facility_name: Rubin-LSST
 obs_collection: LSST.DC2
 collections: ["2.2i/runs/DP0.1"]
 use_butler_uri: false
+fallback_instrument: LSSTCam-imSim
 dataset_types:
   raw:
     dataproduct_type: image
