@@ -3,6 +3,7 @@ facility_name: Subaru
 obs_collection: LSST.CI
 collections: ["HSC/runs/ci_hsc"]
 fallback_instrument: HSC
+obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/hsc?repo=/repo/main&id={id}"
 dataset_types:
   raw:
     dataproduct_type: image

@@ -3,6 +3,7 @@ facility_map:
   HSC: Subaru
 obs_collection: LSST.DRP0
 collections: ["HSC/runs/RC2/w_2022_16/DM-34451"]
+obs_publisher_did_fmt: "ivo://org.example/somedac/lsst-example?repo=unknown&id={id}"
 dataset_types:
   raw:
     dataproduct_type: image

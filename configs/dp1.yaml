@@ -5,6 +5,7 @@ obs_collection: LSST.DP1
 collections: ["LSSTComCam/DP1"]
 use_butler_uri: false
 fallback_instrument: LSSTComCam
+obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-dp1?repo=dp1&id={id}"
 dataset_types:
   raw:
     dataproduct_type: image
