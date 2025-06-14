@@ -8,6 +8,7 @@ obs_collection: LSST.Embargo
 # as a pointer to the latest DRP pipeline run.
 collections: ["LSSTComCam/SIA"]
 use_butler_uri: false
+obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-prompt?repo=embargo&id={id}"
 dataset_types:
   raw:
     dataproduct_type: image

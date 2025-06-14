@@ -13,6 +13,7 @@ obs_collection: LATISS_LIVE       # may evolve as experience with this builds up
 collection_type: RUN              # means we are using all RUN-type collections that match line below
 collections: ["LATISS/raw/all", "LATISS/runs/quickLook/202.*", "LATISS/runs/AUXTEL_DRP_IMAGING.*", "LATISS/prompt/.*"]
 use_butler_uri: false             # do not use URI from Butler, use datalink_url_fmt defined below
+obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-prompt?repo=embargo&id={id}"
 dataset_types:
   raw:
     dataproduct_type: image

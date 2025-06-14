@@ -2,6 +2,7 @@ facility_name: Rubin-LSST
 obs_collection: LSST.DP02
 collections: ["2.2i/runs/DP0.2"]
 fallback_instrument: LSSTCam-imSim
+obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-dp02?repo=dp02&id={id}"
 use_butler_uri: false
 dataset_types:
   raw:
