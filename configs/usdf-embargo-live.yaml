@@ -19,7 +19,7 @@ dataset_types:
     dataproduct_type: image
     dataproduct_subtype: lsst.raw
     calib_level: 1
-    obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
+    obs_id_fmt: "{records[exposure].obs_id}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
     # access_url format is still under discussion/review:
@@ -28,7 +28,7 @@ dataset_types:
     dataproduct_type: image
     dataproduct_subtype: lsst.calexp
     calib_level: 2
-    obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
+    obs_id_fmt: "{records[visit].name}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
     # access_url format is still under discussion/review:
@@ -37,7 +37,7 @@ dataset_types:
     dataproduct_type: image
     dataproduct_subtype: lsst.quickLookExp
     calib_level: 2
-    obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
+    obs_id_fmt: "{records[exposure].obs_id}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
     # access_url format is still under discussion/review:

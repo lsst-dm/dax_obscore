@@ -9,7 +9,7 @@ dataset_types:
     dataproduct_type: image
     dataproduct_subtype: lsst.raw
     calib_level: 1
-    obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
+    obs_id_fmt: "{records[exposure].obs_id}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
@@ -17,7 +17,7 @@ dataset_types:
     dataproduct_type: image
     dataproduct_subtype: lsst.calexp
     calib_level: 2
-    obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
+    obs_id_fmt: "{records[visit].name}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"
@@ -41,7 +41,7 @@ dataset_types:
     dataproduct_type: image
     dataproduct_subtype: lsst.goodSeeingDiff_differenceExp
     calib_level: 3
-    obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
+    obs_id_fmt: "{records[visit].name}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=butler%3A//dp02/{id}"

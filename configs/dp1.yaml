@@ -11,7 +11,7 @@ dataset_types:
     dataproduct_type: image
     dataproduct_subtype: lsst.raw
     calib_level: 1
-    obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
+    obs_id_fmt: "{records[exposure].obs_id}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
@@ -19,7 +19,7 @@ dataset_types:
     dataproduct_type: image
     dataproduct_subtype: lsst.visit_image
     calib_level: 2
-    obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
+    obs_id_fmt: "{records[visit].name}"
     o_ucd: phot.flux.density
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
@@ -43,7 +43,7 @@ dataset_types:
     dataproduct_type: image
     dataproduct_subtype: lsst.difference_image
     calib_level: 3
-    obs_id_fmt: "{records[visit].name}-{records[detector].full_name}"
+    obs_id_fmt: "{records[visit].name}"
     o_ucd: phot.flux.density
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
