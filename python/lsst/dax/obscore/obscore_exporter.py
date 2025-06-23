@@ -344,12 +344,12 @@ class ObscoreExporter:
                 # This must be a non-standard field. Attempt to add it.
                 kwargs = {}
                 datatype = ""
-                if (
-                    arrow_field.type.equals(pyarrow.int64())
-                    or arrow_field.type.equals(pyarrow.int32())
-                    or arrow_field.type.equals(pyarrow.int16())
-                ):
+                if arrow_field.type.equals(pyarrow.int64()):
+                    datatype = "long"
+                elif arrow_field.type.equals(pyarrow.int32()):
                     datatype = "int"
+                elif arrow_field.type.equals(pyarrow.int16()):
+                    datatype = "short"
                 elif arrow_field.type.equals(pyarrow.string()):
                     datatype = "char"
                     kwargs["arraysize"] = "*"
