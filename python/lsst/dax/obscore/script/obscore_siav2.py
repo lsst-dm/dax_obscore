@@ -48,6 +48,7 @@ def obscore_siav2(
     dataset_type: Iterable[str],
     dpsubtype: Iterable[str],
     dptype: Iterable[str],
+    id: Iterable[str],
 ) -> None:
     """Export Butler datasets as ObsCore Data Model in parquet format.
 
@@ -83,6 +84,8 @@ def obscore_siav2(
         Data product sub types to select.
     dptype : `~collections.abc.Iterable` [ `str` ]
         The data product types to select.
+    id : `~collections.abc.Iterable` [ `str` ]
+        The obs_publisher_did values of explicit datasets.
     """
     butler = Butler.from_config(repo, writeable=False)
 
@@ -103,5 +106,6 @@ def obscore_siav2(
         dpsubtype=dpsubtype,
         dptype=dptype,
         maxrec=maxrec,
+        id=id,
     )
     votable.to_xml(destination)
