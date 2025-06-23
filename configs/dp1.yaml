@@ -16,6 +16,9 @@ dataset_types:
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
     s_xel: [4608, 4096]
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - {records[exposure].obs_id}-{records[detector].full_name} {records[exposure].timespan.begin.utc.isot}Z"
   visit_image:
     dataproduct_type: image
     dataproduct_subtype: lsst.visit_image
@@ -25,6 +28,9 @@ dataset_types:
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
     s_xel: [4072, 4000]
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - {records[visit].name}-{records[detector].full_name} {records[visit].timespan.begin.utc.isot}Z"
   deep_coadd:
     dataproduct_type: image
     dataproduct_subtype: lsst.deep_coadd
@@ -34,6 +40,9 @@ dataset_types:
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
     s_xel: [3400, 3400]
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - tract={tract} patch={patch}"
   template_coadd:
     dataproduct_type: image
     dataproduct_subtype: lsst.template_coadd
@@ -43,6 +52,9 @@ dataset_types:
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
     s_xel: [3400, 3400]
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - tract={tract} patch={patch}"
   difference_image:
     dataproduct_type: image
     dataproduct_subtype: lsst.difference_image
@@ -52,6 +64,9 @@ dataset_types:
     access_format: "application/x-votable+xml;content=datalink"
     datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
     s_xel: [4072, 4000]
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - {records[visit].name}-{records[detector].full_name} {records[visit].timespan.begin.utc.isot}Z"
 extra_columns:
   lsst_visit:
     template: "{visit}"

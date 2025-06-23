@@ -12,6 +12,9 @@ dataset_types:
     obs_id_fmt: "{records[exposure].obs_id}"
     o_ucd: phot.count
     access_format: image/fits
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - {records[exposure].obs_id}-{records[detector].full_name} {records[exposure].timespan.begin.utc.isot}Z"
   calexp:
     dataproduct_type: image
     dataproduct_subtype: lsst.calexp
@@ -19,6 +22,9 @@ dataset_types:
     obs_id_fmt: "{records[visit].name}"
     o_ucd: phot.count
     access_format: image/fits
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - {records[visit].name}-{records[detector].full_name} {records[visit].timespan.begin.utc.isot}Z"
   deepCoadd:
     dataproduct_type: image
     dataproduct_subtype: lsst.coadd
@@ -26,6 +32,9 @@ dataset_types:
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.count
     access_format: image/fits
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - tract={tract} patch={patch}"
 extra_columns:
   lsst_visit:
     template: "{visit}"
