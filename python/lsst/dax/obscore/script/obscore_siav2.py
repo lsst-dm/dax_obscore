@@ -49,6 +49,7 @@ def obscore_siav2(
     dpsubtype: Iterable[str],
     dptype: Iterable[str],
     id: Iterable[str],
+    id_list: str,
 ) -> None:
     """Export Butler datasets as ObsCore Data Model in parquet format.
 
@@ -86,11 +87,20 @@ def obscore_siav2(
         The data product types to select.
     id : `~collections.abc.Iterable` [ `str` ]
         The obs_publisher_did values of explicit datasets.
+    id_list : `str` or `None`
+        Name of file containing multiple IDs. Will be merged with any
+        explicit ID values.
     """
     butler = Butler.from_config(repo, writeable=False)
 
     config_data = Config(config)
     cfg = ExporterConfig.model_validate(config_data)
+
+    if id_list:
+        with open(id_list) as fd:
+            ids = tuple(line.strip() for line in fd.readlines() if line)
+        # By default `id` is a tuple. Merge with any `--id` option.
+        id = tuple(id) + ids
 
     votable = siav2_query_from_raw(
         butler,
