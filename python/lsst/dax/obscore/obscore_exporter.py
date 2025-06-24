@@ -486,11 +486,11 @@ class ObscoreExporter:
                     if where_clause.extra_dims:
                         where_query = where_query.join_dimensions(where_clause.extra_dims)
 
+                    where_query = where_query.join_dataset_search(dataset_type_name, collections=collections)
+
                     if where_clause.where:
                         _LOG.verbose("Processing query with constraint %s", where_clause)
                         where_query = where_query.where(where_clause.where, bind=where_clause.bind)
-
-                    where_query = where_query.join_dataset_search(dataset_type_name, collections=collections)
 
                     region_args = [region_key] if region_key else []
                     result = where_query.general(
