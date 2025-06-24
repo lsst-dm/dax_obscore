@@ -39,21 +39,27 @@ extra_columns:
   lsst_visit:
     template: "{visit}"
     type: "int"
+    doc: Visit or exposure identifier
   lsst_detector:
     template: "{detector}"
     type: "int"
+    doc: Detector number of this observation
   lsst_tract:
     template: "{tract}"
     type: "int"
+    doc: Tract within a skymap
   lsst_patch:
     template: "{patch}"
     type: "int"
+    doc: Patch within a tract
   lsst_band:
     template: "{band}"
     type: "string"
+    doc: Wavelength band for this observation
   lsst_filter:
     template: "{physical_filter}"
     type: "string"
+    doc: Physical filter name for this observation
 spectral_ranges:
   "HSC-G": [406.0e-9, 545.0e-9]
   "HSC-R": [543.0e-9, 693.0e-9]
