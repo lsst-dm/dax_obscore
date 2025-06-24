@@ -312,6 +312,13 @@ class ObscoreExporter:
             raise RuntimeError("More than one table defined in ObsCore schema")
         obscore_columns = {column.name: column for column in tables[0].columns}
 
+        # Some description text for extra fields is held in the configuration.
+        extra_descriptions: dict[str, str] = {}
+        if self.config.extra_columns:
+            for name, column in self.config.extra_columns.items():
+                if doc := getattr(column, "doc"):  # noqa
+                    extra_descriptions[name] = doc
+
         votable = astropy.io.votable.tree.VOTableFile()
         resource = astropy.io.votable.tree.Resource()
         votable.resources.append(resource)
@@ -330,6 +337,8 @@ class ObscoreExporter:
                     ucd=ffield.ivoa_ucd,
                     utype=ffield.votable_utype,
                 )
+                if ffield.description:
+                    field.description = ffield.description
                 fields.append(field)
             elif arrow_field.name == "em_filter_name":
                 # Non-standard but part of internal standard schema.
@@ -339,6 +348,7 @@ class ObscoreExporter:
                     datatype="char",
                     arraysize="*",
                 )
+                field.description = "Wavelength band associated with this observation"
                 fields.append(field)
             else:
                 # This must be a non-standard field. Attempt to add it.
@@ -363,6 +373,8 @@ class ObscoreExporter:
                     datatype=datatype,
                     **kwargs,
                 )
+                if arrow_field.name in extra_descriptions:
+                    field.description = extra_descriptions[arrow_field.name]
                 fields.append(field)
 
         table0 = astropy.io.votable.tree.TableElement(votable)

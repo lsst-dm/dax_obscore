@@ -81,6 +81,8 @@ class DaxObsCoreTestMixin:
                 "HSC-R": [543.0e-9, 693.0e-9],
                 "HSC-I": [690.0e-9, 842.0e-9],
             },
-            extra_columns={"day_obs": {"template": "{records[visit].day_obs}", "type": "int"}},
+            extra_columns={
+                "day_obs": {"template": "{records[visit].day_obs}", "type": "int", "doc": "Some docstring"}
+            },
         )
         return config
