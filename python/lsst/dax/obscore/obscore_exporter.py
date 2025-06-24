@@ -330,6 +330,8 @@ class ObscoreExporter:
                     ucd=ffield.ivoa_ucd,
                     utype=ffield.votable_utype,
                 )
+                if ffield.description:
+                    field.description = ffield.description
                 fields.append(field)
             elif arrow_field.name == "em_filter_name":
                 # Non-standard but part of internal standard schema.
@@ -339,6 +341,7 @@ class ObscoreExporter:
                     datatype="char",
                     arraysize="*",
                 )
+                field.description = "Wavelength band associated with this observation"
                 fields.append(field)
             else:
                 # This must be a non-standard field. Attempt to add it.
