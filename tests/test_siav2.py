@@ -202,6 +202,25 @@ class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
             ({"dptype": "cube"}, 0),
             ({"dptype": "cube", "calib": 1}, 0),
             ({"dpsubtype": "lsst.deepCoadd", "dptype": "image"}, 2),
+            (
+                {
+                    "id": [
+                        "ivo://org.rubinobs/hsc?repo=test&id=cf2a1298-ea80-4780-b020-5ef039d6b4f0",
+                        "ivo://org.rubinobs/hsc?repo=test&id=4ad9c3ad-490d-5c05-869a-397c833ec66b",
+                    ]
+                },
+                2,
+            ),
+            (
+                {
+                    "id": [
+                        "ivo://org.rubinobs/hsc?repo=test&id=cf2a1298-ea80-4780-b020-5ef039d6b4f0",
+                        "ivo://org.rubinobs/hsc?repo=test&id=4ad9c3ad-490d-5c05-869a-397c833ec66b",
+                    ],
+                    "calib": {2},
+                },
+                1,
+            ),
         ):
             with self.subTest(kwargs=kwargs, expected=expected):
                 votable = siav2_query_from_raw(
