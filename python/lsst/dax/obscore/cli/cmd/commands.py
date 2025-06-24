@@ -223,6 +223,19 @@ def update_table(*args: Any, **kwargs: Any) -> None:
     multiple=True,
     type=str,
 )
+@click.option(
+    "--id",
+    help="The obs_publisher_did of an explicit dataset known to the Butler.",
+    multiple=True,
+    type=str,
+)
+@click.option(
+    "--id-list",
+    help="File containing multiple IDs with one ID per line.",
+    multiple=False,
+    type=str,
+    default=None,
+)
 @options_file_option()
 def siav2(*args: Any, **kwargs: Any) -> None:
     """Export Butler datasets as ObsCore Data Model in VOTable format.

@@ -50,6 +50,7 @@ class DaxObsCoreTestMixin:
             version=0,
             facility_name="Subaru",
             obs_collection="obs-collection",
+            obs_publisher_did_fmt="ivo://org.rubinobs/usdac/lsst-dp1?repo=dp1&id={id}",
             collections=["HSC/runs/ci_hsc"],
             use_butler_uri=False,
             dataset_types={

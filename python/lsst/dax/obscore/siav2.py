@@ -215,8 +215,13 @@ class SIAv2Parameters(BaseModel):
             parsed["specrp"] = [Interval.from_string(val) for val in ensure_iterable(specrp)]
         if timeres:
             parsed["timeres"] = [Interval.from_string(val) for val in ensure_iterable(timeres)]
+        num_ids = None
         if id:
-            parsed["id"] = ensure_iterable(id)
+            ids = tuple(ensure_iterable(id))
+            parsed["id"] = ids
+            # We know that we can not have more values returned than we have
+            # listed in ID.
+            num_ids = len(ids)
         if collection:
             parsed["collection"] = ensure_iterable(collection)
         if facility:
@@ -227,8 +232,14 @@ class SIAv2Parameters(BaseModel):
             parsed["dpsubtype"] = ensure_iterable(dpsubtype)
         if target:
             parsed["target"] = ensure_iterable(target)
-        if maxrec is not None:
-            parsed["maxrec"] = int(maxrec)
+        if maxrec is not None or num_ids is not None:
+            # Cap maxrec at the number of requested IDs if given.
+            max_records = []
+            if maxrec is not None:
+                max_records.append(int(maxrec))
+            if num_ids is not None:
+                max_records.append(num_ids)
+            parsed["maxrec"] = min(max_records)
         return cls.model_validate(parsed)
 
 
@@ -397,6 +408,23 @@ class SIAv2Handler:
             instrument_wheres, where = self.from_instrument_or_band(instruments, band_info, dims)
             if where is not None:
                 wheres.append(where)
+
+            # For ID queries there is no easy way to do a filtered query
+            # that knows in advance the dataset type of the requested
+            # IDs and so we have to query for all the IDs for every dataset
+            # type. This is inefficient. At present there is no bulk query
+            # method for returning refs for a list of UUIDs, which would
+            # allow the requested dataset types to be trimmed.
+            # Ignore the repo part of the URI. If the dataset UUID is missing
+            # it won't be returned anyhow.
+            if parameters.id:
+                parsed_ids = [Butler.parse_dataset_uri(uri) for uri in parameters.id]
+                wheres.append(
+                    WhereBind(
+                        where="dataset_id IN (:IDS)",
+                        bind={"IDS": [p.dataset_id for p in parsed_ids]},
+                    )
+                )
 
             if parameters.pos:
                 where = self.from_pos(parameters.pos, dims)
