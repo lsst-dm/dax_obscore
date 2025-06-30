@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["ObscoreExporter"]
 
 import contextlib
+import datetime
 import io
 from collections.abc import Iterator
 from functools import cache
@@ -290,6 +291,18 @@ class ObscoreExporter:
                 for record_batch, _ in self._make_record_batches(self.config.batch_size):
                     writer.write_batch(record_batch)
 
+    def _create_votable_info(
+        self, name: str, value: Any, *, content: str | None = None
+    ) -> astropy.io.votable.tree.Info:
+        """Create an INFO field with optional description.
+
+        Returns None if value is None.
+        """
+        info = astropy.io.votable.tree.Info(name=name, value=value)
+        if content:
+            info.content = content
+        return info
+
     def to_votable(self, limit: int | None = None) -> astropy.io.votable.tree.VOTableFile:
         """Run the export and return the results as a VOTable instance.
 
@@ -343,6 +356,18 @@ class ObscoreExporter:
             )
         )
         votable.resources.append(resource)
+
+        origin_infos = [
+            self._create_votable_info("service_protocol", "ivo://ivoa.net/std/sia#query-2.0"),
+            self._create_votable_info(
+                "request_date",
+                datetime.datetime.now(tz=datetime.UTC).isoformat(timespec="seconds"),
+                content="Query execution date",
+            ),
+        ]
+        if origin := self.config.origin:
+            origin_infos.append(self._create_votable_info("publisher", origin.publisher))
+        votable.infos.extend(origin_infos)
 
         fields = []
         for arrow_field in self.schema:
@@ -419,6 +444,24 @@ class ObscoreExporter:
             chunk = arrow_to_numpy(table)
             n_rows += len(chunk)
             chunks.append(chunk)
+
+        # Add data origin metadata where possible.
+        if origin:
+            origin_info = []
+            if origin.citation:
+                origin_info.append(self._create_votable_info("citation", origin.citation))
+            if origin.publication_date:
+                origin_info.append(
+                    self._create_votable_info(
+                        "publication_date", str(origin.publication_date), content="Date of publication"
+                    )
+                )
+            if origin.article:
+                origin_info.append(self._create_votable_info("article", origin.article))
+            if origin_info:
+                resource.infos.extend(origin_info)
+            if origin.title:
+                resource.description = origin.title
 
         # Report any overflow.
         query_status = "OVERFLOW" if overflow else "OK"

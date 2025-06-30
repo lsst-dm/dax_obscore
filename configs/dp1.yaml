@@ -99,3 +99,10 @@ spectral_ranges:
   "i": [693.6e-9, 818.8e-9]
   "z": [819.2e-9, 920.1e-9]
   "y": [927.8e-9, 1100.0e-9]
+origin:
+  publisher: "NSF-DOE Vera C. Rubin Observatory US Data Access Center"
+  publication_date: 2025-06-30
+  citation: 10.71929/rubin/2570308
+  reference_url: "https://dp1.lsst.io"
+  article: 10.71929/rubin/2570536
+  title: "Legacy Survey of Date and Time Data Preview 1"

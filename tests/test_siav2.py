@@ -23,6 +23,7 @@ import math
 import os
 import unittest
 
+import astropy.io.votable.dataorigin as dataorigin
 from astropy.time import Time
 
 import lsst.sphgeom
@@ -234,6 +235,21 @@ class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
                     self.butler, config, collections=["HSC/runs/ci_hsc", "HSC/raw/all"], **kwargs
                 )
                 self.assertVOTable(votable, expected)
+
+    def test_data_origin(self):
+        """Test that origin information is included."""
+        votable = siav2_query_from_raw(
+            self.butler, self.config, collections=["HSC/runs/ci_hsc", "HSC/raw/all"], maxrec="1"
+        )
+        origin = dataorigin.extract_data_origin(votable)
+        query = origin.query
+        self.assertEqual(query.publisher, "Publisher")
+        self.assertEqual(query.service_protocol, "ivo://ivoa.net/std/sia#query−2.0")
+
+        prov = origin.origin[0]
+        self.assertEqual(prov.citation[0], "10.rubin/dataset")
+        self.assertEqual(prov.article[0], "10.rubin/article")
+        self.assertEqual(prov.publication_date[0], "2025-06-30")
 
     def test_entry_point(self):
         """Test that a handler can be returned by namespace."""
