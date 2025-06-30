@@ -23,6 +23,7 @@ from __future__ import annotations
 
 __all__ = ["ExporterConfig"]
 
+import datetime
 from collections.abc import Iterable
 from typing import Any, Literal
 
@@ -90,6 +91,26 @@ class WhereBind(BaseModel):
         return cls(where=where, bind=bind, extra_dims=extras)
 
 
+class DataOrigin(BaseModel):
+    """Origin information for this dataset.
+
+    See https://www.ivoa.net/documents/DataOrigin/
+    """
+
+    publisher: str
+    """Data center that issued the results."""
+    publication_date: datetime.date
+    """Date of dataset publication."""
+    citation: str | None = None
+    """DOI associated with the ObsCore dataset."""
+    reference_url: str | None = None
+    """Landing page describing this dataset."""
+    article: str | None = None
+    """Any publication describing this dataset."""
+    title: str | None = None
+    """Descriptive title for the dataset results."""
+
+
 class ExporterConfig(ObsCoreConfig):
     """Complete configuration for ObscoreExporter."""
 
@@ -109,6 +130,9 @@ class ExporterConfig(ObsCoreConfig):
 
     csv_null_string: str = r"\N"
     """Value to use for NULLs in CSV output."""
+
+    origin: DataOrigin | None = None
+    """Optional provenance information for this export."""
 
     def select_dataset_types(self, dataset_types: Iterable[str]) -> None:
         """Update the configuration to include only these dataset types.

@@ -85,5 +85,11 @@ class DaxObsCoreTestMixin:
             extra_columns={
                 "day_obs": {"template": "{records[visit].day_obs}", "type": "int", "doc": "Some docstring"}
             },
+            origin={
+                "publisher": "Publisher",
+                "citation": "10.rubin/dataset",
+                "article": "10.rubin/article",
+                "publication_date": "2025-06-30",
+            },
         )
         return config
