@@ -29,8 +29,7 @@ from collections.abc import Iterator
 from functools import cache
 from typing import Any
 
-import astropy.io.votable
-import astropy.table
+import astropy.io.votable.tree
 import felis.datamodel
 import pyarrow
 import sqlalchemy
@@ -319,8 +318,30 @@ class ObscoreExporter:
                 if doc := getattr(column, "doc"):  # noqa
                     extra_descriptions[name] = doc
 
-        votable = astropy.io.votable.tree.VOTableFile()
-        resource = astropy.io.votable.tree.Resource()
+        # Astropy <= 7.1 has a bug whereby it internally does not know its
+        # own version and so disallows some options. For now we have to use
+        # an internal API to assign the internal config. Otherwise certain
+        # elements can not be specified.
+        # Being fixed in https://github.com/astropy/astropy/pull/18366
+        votable = astropy.io.votable.tree.VOTableFile(version="1.5")
+        votable_config = votable._get_version_checks()
+        resource = astropy.io.votable.tree.Resource(config=votable_config)
+        coosys_id = "coosys"
+        resource.coordinate_systems.append(
+            astropy.io.votable.tree.CooSys(
+                system="ICRS", refposition="TOPOCENTER", ID=coosys_id, config=votable_config
+            )
+        )
+        timesys_id = "timesys"
+        resource.time_systems.append(
+            astropy.io.votable.tree.TimeSys(
+                timeorigin="MJD-origin",
+                timescale="UTC",
+                refposition="TOPOCENTER",
+                ID=timesys_id,
+                config=votable_config,
+            )
+        )
         votable.resources.append(resource)
 
         fields = []
@@ -328,6 +349,12 @@ class ObscoreExporter:
             if arrow_field.name in obscore_columns:
                 ffield = obscore_columns[arrow_field.name]
                 votable_datatype = felis.datamodel.FelisType.felis_type(ffield.datatype.value).votable_name
+                refargs = {}
+                if ivoa_ucd := ffield.ivoa_ucd:
+                    if ivoa_ucd.startswith("pos.eq") or ivoa_ucd.startswith("pos.outline"):
+                        refargs["ref"] = coosys_id
+                    elif ivoa_ucd.startswith("time.start") or ivoa_ucd.startswith("time.end"):
+                        refargs["ref"] = timesys_id
                 field = astropy.io.votable.tree.Field(
                     votable,
                     name=ffield.name,
@@ -336,6 +363,7 @@ class ObscoreExporter:
                     unit=ffield.ivoa_unit,
                     ucd=ffield.ivoa_ucd,
                     utype=ffield.votable_utype,
+                    **refargs,
                 )
                 if ffield.description:
                     field.description = ffield.description
@@ -377,7 +405,9 @@ class ObscoreExporter:
                     field.description = extra_descriptions[arrow_field.name]
                 fields.append(field)
 
-        table0 = astropy.io.votable.tree.TableElement(votable)
+        # Config parameter is needed until upstream inherits the config from
+        # the VOTableFile. Without this BINARY2 will not be allowed if needed.
+        table0 = astropy.io.votable.tree.TableElement(votable, config=votable_config)
         resource.tables.append(table0)
         table0.fields.extend(fields)
 
