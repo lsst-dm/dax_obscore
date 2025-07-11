@@ -30,7 +30,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
 from typing import Any, Self
 
-import astropy.io.votable
+import astropy.io.votable.tree
 import astropy.time
 from pydantic import BaseModel, field_validator, model_validator
 
