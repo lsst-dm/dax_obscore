@@ -731,6 +731,7 @@ def siav2_query_from_raw(
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
     dpsubtype: Iterable[str] = (),
+    query_url: str | None = None,
 ) -> astropy.io.votable.tree.VOTableFile:
     """Run SIAv2 query with raw parameters and return results as VOTable.
 
@@ -785,6 +786,9 @@ def siav2_query_from_raw(
         Names of Butler dataset types to include in query.
     dpsubtype : `~collections.abc.Iterable` [ `str` ], optional
         ObsCore data product sub type. An extension to the standard.
+    query_url : `str` or `None`, optional
+        Original query URL given to the SIA service. If provided, it will be
+        included in the VOTable in the DataOrigin metadata.
 
     Returns
     -------
@@ -812,7 +816,14 @@ def siav2_query_from_raw(
         target=target,
         maxrec=maxrec,
     )
-    return siav2_query(butler, config, parameters, collections=collections, dataset_type=dataset_type)
+    return siav2_query(
+        butler,
+        config,
+        parameters,
+        collections=collections,
+        dataset_type=dataset_type,
+        query_url=query_url,
+    )
 
 
 def siav2_query(
@@ -822,6 +833,7 @@ def siav2_query(
     *,
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
+    query_url: str | None = None,
 ) -> astropy.io.votable.tree.VOTableFile:
     """Run SIAv2 query with parsed parameters and return results as VOTable.
 
@@ -837,6 +849,9 @@ def siav2_query(
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
         Names of dataset types to include in query.
+    query_url : `str` or `None`, optional
+        Original query URL given to the SIA service. If provided, it will be
+        included in the VOTable in the DataOrigin metadata.
 
     Returns
     -------
@@ -868,7 +883,7 @@ def siav2_query(
     if handler.warnings:
         _LOG.warning("The query triggered the following warnings:\n%s", "\n".join(handler.warnings))
 
-    votable = exporter.to_votable(limit=parameters.maxrec)
+    votable = exporter.to_votable(limit=parameters.maxrec, query_url=query_url)
 
     if handler.warnings:
         resource = votable.resources[0]

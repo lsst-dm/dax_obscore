@@ -303,13 +303,18 @@ class ObscoreExporter:
             info.content = content
         return info
 
-    def to_votable(self, limit: int | None = None) -> astropy.io.votable.tree.VOTableFile:
+    def to_votable(
+        self, limit: int | None = None, query_url: str | None = None
+    ) -> astropy.io.votable.tree.VOTableFile:
         """Run the export and return the results as a VOTable instance.
 
         Parameters
         ----------
         limit : `int` or `None`, optional
             Maximum number of records to return. If `None` there is no limit.
+        query_url : `str` or `None`, optional
+            Original query URL given to the SIA service. If provided, it will
+            be included in the VOTable in the DataOrigin metadata.
 
         Returns
         -------
@@ -365,6 +370,8 @@ class ObscoreExporter:
                 content="Query execution date",
             ),
         ]
+        if query_url:
+            origin_infos.append(self._create_votable_info("request", query_url, content="Original query URL"))
         if origin := self.config.origin:
             origin_infos.append(self._create_votable_info("publisher", origin.publisher))
         votable.infos.extend(origin_infos)
