@@ -23,6 +23,7 @@ __all__ = ["obscore_siav2"]
 
 import logging
 import numbers
+import sys
 from collections.abc import Iterable
 
 from lsst.daf.butler import Butler, Config
@@ -117,5 +118,6 @@ def obscore_siav2(
         dptype=dptype,
         maxrec=maxrec,
         id=id,
+        query_url=" ".join(sys.argv[1:]) if sys.argv else None,
     )
     votable.to_xml(destination)
