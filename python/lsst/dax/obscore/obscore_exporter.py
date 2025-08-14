@@ -55,6 +55,7 @@ from lsst.utils.logging import getLogger
 
 from . import ExporterConfig
 from .config import WhereBind
+from .version import __version__
 
 _LOG = getLogger(__name__)
 
@@ -367,6 +368,11 @@ class ObscoreExporter:
 
         origin_infos = [
             self._create_votable_info("service_protocol", "ivo://ivoa.net/std/sia#query-2.0"),
+            self._create_votable_info(
+                "server_software",
+                f"lsst-dax-obscore version {__version__}",
+                content="Version of the service",
+            ),
             self._create_votable_info(
                 "request_date",
                 datetime.datetime.now(tz=datetime.UTC).isoformat(timespec="seconds"),

@@ -245,6 +245,9 @@ class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
         query = origin.query
         self.assertEqual(query.publisher, "Publisher")
         self.assertEqual(query.service_protocol, "ivo://ivoa.net/std/sia#query−2.0")
+        self.assertIsNotNone(query.server_software)
+        assert query.server_software is not None  # for mypy
+        self.assertTrue(query.server_software.startswith("lsst-dax-obscore version "))
 
         prov = origin.origin[0]
         self.assertEqual(prov.citation[0], "10.rubin/dataset")
