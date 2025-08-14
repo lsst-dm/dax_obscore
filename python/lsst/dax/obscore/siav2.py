@@ -707,6 +707,34 @@ def get_daf_butler_siav2_handler() -> type[SIAv2Handler]:
     return SIAv2DafButlerHandler
 
 
+def siav2_parameters_to_query_string(**kwargs: Any) -> str:
+    """Convert SIAv2 query parameters to a query string.
+
+    Parameters
+    ----------
+    **kwargs : `dict`
+        Keyword arguments that match the SIAv2 query parameters.
+
+    Returns
+    -------
+    query_string : `str`
+        The SIAv2 query string.
+    """
+    queries: list[str] = []
+    for k, v in kwargs.items():
+        if not v:
+            continue
+        multiples: list[str] = []
+        for value in ensure_iterable(v):
+            multiples.append(str(value))
+        query = f"{k.upper()}={' OR '.join(repr(m) for m in multiples)}"
+        if multiples:
+            query = f"({query})"
+        queries.append(query)
+
+    return " AND\n".join(queries)
+
+
 def siav2_query_from_raw(
     butler: Butler,
     config: ExporterConfig,
@@ -795,6 +823,31 @@ def siav2_query_from_raw(
     votable : `astropy.io.votable.tree.VOTableFile`
         Results of query as a VOTable.
     """
+    # The raw query text is useful for DataOrigin metadata but it is not
+    # easy to get from the SIAv2Parameters class so we will construct it
+    # manually here. This causes some duplication of large numbers of
+    # standardized parameters.
+    query_string = siav2_parameters_to_query_string(
+        instrument=instrument,
+        pos=pos,
+        band=band,
+        time=time,
+        pol=pol,
+        fov=fov,
+        spatres=spatres,
+        specrp=specrp,
+        exptime=exptime,
+        timeres=timeres,
+        id=id,
+        collection=collection,
+        facility=facility,
+        calib=calib,
+        dptype=dptype,
+        dpsubtype=dpsubtype,
+        target=target,
+        maxrec=maxrec,
+    )
+
     # Parse the SIAv2 parameters
     parameters = SIAv2Parameters.from_siav2(
         instrument=instrument,
@@ -823,6 +876,7 @@ def siav2_query_from_raw(
         collections=collections,
         dataset_type=dataset_type,
         query_url=query_url,
+        query_string=query_string,
     )
 
 
@@ -834,6 +888,7 @@ def siav2_query(
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
     query_url: str | None = None,
+    query_string: str | None = None,
 ) -> astropy.io.votable.tree.VOTableFile:
     """Run SIAv2 query with parsed parameters and return results as VOTable.
 
@@ -852,6 +907,9 @@ def siav2_query(
     query_url : `str` or `None`, optional
         Original query URL given to the SIA service. If provided, it will be
         included in the VOTable in the DataOrigin metadata.
+    query_string : `str` or `None`, optional
+        A plain text version of the query parameters used for DataOrigin
+        metadata.
 
     Returns
     -------
@@ -883,7 +941,7 @@ def siav2_query(
     if handler.warnings:
         _LOG.warning("The query triggered the following warnings:\n%s", "\n".join(handler.warnings))
 
-    votable = exporter.to_votable(limit=parameters.maxrec, query_url=query_url)
+    votable = exporter.to_votable(limit=parameters.maxrec, query_url=query_url, query_string=query_string)
 
     if handler.warnings:
         resource = votable.resources[0]
