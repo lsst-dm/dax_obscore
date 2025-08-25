@@ -459,11 +459,12 @@ class ObscoreExporter:
         chunks = []
         n_rows = 0
         overflow = False
-        for record_batch, _ in self._make_record_batches(self.config.batch_size, limit=limit):
+        for record_batch, _overflow in self._make_record_batches(self.config.batch_size, limit=limit):
             table = ArrowTable.from_batches([record_batch])
             chunk = arrow_to_numpy(table)
             n_rows += len(chunk)
             chunks.append(chunk)
+            overflow = _overflow  # Appease B007 ruff check.
 
         # Add data origin metadata where possible.
         if origin:
