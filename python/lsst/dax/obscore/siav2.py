@@ -724,11 +724,9 @@ def siav2_parameters_to_query_string(**kwargs: Any) -> str:
     for k, v in kwargs.items():
         if not v:
             continue
-        multiples: list[str] = []
-        for value in ensure_iterable(v):
-            multiples.append(str(value))
-        query = f"{k.upper()}={' OR '.join(repr(m) for m in multiples)}"
-        if multiples:
+        multiples: list[Any] = list(ensure_iterable(v))
+        query = " OR ".join(f"{k.upper()}={m!r}" for m in multiples)
+        if len(multiples) > 1:
             query = f"({query})"
         queries.append(query)
 
