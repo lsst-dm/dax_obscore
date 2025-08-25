@@ -707,8 +707,8 @@ def get_daf_butler_siav2_handler() -> type[SIAv2Handler]:
     return SIAv2DafButlerHandler
 
 
-def siav2_parameters_to_query_string(**kwargs: Any) -> str:
-    """Convert SIAv2 query parameters to a query string.
+def siav2_parameters_to_query_description(**kwargs: Any) -> str:
+    """Convert SIAv2 query parameters to a query description string.
 
     Parameters
     ----------
@@ -718,7 +718,7 @@ def siav2_parameters_to_query_string(**kwargs: Any) -> str:
     Returns
     -------
     query_string : `str`
-        The SIAv2 query string.
+        The SIAv2 query as human-readable description.
     """
     queries: list[str] = []
     for k, v in kwargs.items():
@@ -826,7 +826,7 @@ def siav2_query_from_raw(
     # easy to get from the SIAv2Parameters class so we will construct it
     # manually here. This causes some duplication of large numbers of
     # standardized parameters.
-    query_string = siav2_parameters_to_query_string(
+    query_string = siav2_parameters_to_query_description(
         instrument=instrument,
         pos=pos,
         band=band,
