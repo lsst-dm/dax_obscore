@@ -30,7 +30,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
 from typing import Any, Self
 
-import astropy.io.votable
+import astropy.io.votable.tree
 import astropy.time
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -707,6 +707,33 @@ def get_daf_butler_siav2_handler() -> type[SIAv2Handler]:
     return SIAv2DafButlerHandler
 
 
+def siav2_parameters_to_query_description(**kwargs: Any) -> str:
+    """Convert SIAv2 query parameters to a query description string.
+
+    Parameters
+    ----------
+    **kwargs : `dict`
+        Keyword arguments that match the SIAv2 query parameters.
+
+    Returns
+    -------
+    query_string : `str`
+        The SIAv2 query as human-readable description.
+    """
+    queries: list[str] = []
+    for k, v in kwargs.items():
+        if not v:
+            continue
+        multiples: list[Any] = list(ensure_iterable(v))
+        if len(multiples) > 1:
+            query = f"{k.upper()} IN (\n" + ",\n".join(repr(m) for m in multiples) + "\n)"
+        else:
+            query = f"{k.upper()} = {multiples[0]!r}"
+        queries.append(query)
+
+    return " AND\n".join(queries)
+
+
 def siav2_query_from_raw(
     butler: Butler,
     config: ExporterConfig,
@@ -731,6 +758,7 @@ def siav2_query_from_raw(
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
     dpsubtype: Iterable[str] = (),
+    query_url: str | None = None,
 ) -> astropy.io.votable.tree.VOTableFile:
     """Run SIAv2 query with raw parameters and return results as VOTable.
 
@@ -785,12 +813,40 @@ def siav2_query_from_raw(
         Names of Butler dataset types to include in query.
     dpsubtype : `~collections.abc.Iterable` [ `str` ], optional
         ObsCore data product sub type. An extension to the standard.
+    query_url : `str` or `None`, optional
+        Original query URL given to the SIA service. If provided, it will be
+        included in the VOTable in the DataOrigin metadata.
 
     Returns
     -------
     votable : `astropy.io.votable.tree.VOTableFile`
         Results of query as a VOTable.
     """
+    # The raw query text is useful for DataOrigin metadata but it is not
+    # easy to get from the SIAv2Parameters class so we will construct it
+    # manually here. This causes some duplication of large numbers of
+    # standardized parameters.
+    query_string = siav2_parameters_to_query_description(
+        instrument=instrument,
+        pos=pos,
+        band=band,
+        time=time,
+        pol=pol,
+        fov=fov,
+        spatres=spatres,
+        specrp=specrp,
+        exptime=exptime,
+        timeres=timeres,
+        id=id,
+        collection=collection,
+        facility=facility,
+        calib=calib,
+        dptype=dptype,
+        dpsubtype=dpsubtype,
+        target=target,
+        maxrec=maxrec,
+    )
+
     # Parse the SIAv2 parameters
     parameters = SIAv2Parameters.from_siav2(
         instrument=instrument,
@@ -812,7 +868,15 @@ def siav2_query_from_raw(
         target=target,
         maxrec=maxrec,
     )
-    return siav2_query(butler, config, parameters, collections=collections, dataset_type=dataset_type)
+    return siav2_query(
+        butler,
+        config,
+        parameters,
+        collections=collections,
+        dataset_type=dataset_type,
+        query_url=query_url,
+        query_string=query_string,
+    )
 
 
 def siav2_query(
@@ -822,6 +886,8 @@ def siav2_query(
     *,
     collections: Iterable[str] = (),
     dataset_type: Iterable[str] = (),
+    query_url: str | None = None,
+    query_string: str | None = None,
 ) -> astropy.io.votable.tree.VOTableFile:
     """Run SIAv2 query with parsed parameters and return results as VOTable.
 
@@ -837,6 +903,12 @@ def siav2_query(
         Optional collection names, if provided overrides one in ``config``.
     dataset_type : `~collections.abc.Iterable` [ `str` ]
         Names of dataset types to include in query.
+    query_url : `str` or `None`, optional
+        Original query URL given to the SIA service. If provided, it will be
+        included in the VOTable in the DataOrigin metadata.
+    query_string : `str` or `None`, optional
+        A plain text version of the query parameters used for DataOrigin
+        metadata.
 
     Returns
     -------
@@ -868,7 +940,7 @@ def siav2_query(
     if handler.warnings:
         _LOG.warning("The query triggered the following warnings:\n%s", "\n".join(handler.warnings))
 
-    votable = exporter.to_votable(limit=parameters.maxrec)
+    votable = exporter.to_votable(limit=parameters.maxrec, query_url=query_url, query_string=query_string)
 
     if handler.warnings:
         resource = votable.resources[0]

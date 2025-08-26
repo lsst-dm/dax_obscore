@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["ObscoreExporter"]
 
 import contextlib
+import datetime
 import io
 from collections.abc import Iterator
 from functools import cache
@@ -54,6 +55,7 @@ from lsst.utils.logging import getLogger
 
 from . import ExporterConfig
 from .config import WhereBind
+from .version import __version__
 
 _LOG = getLogger(__name__)
 
@@ -290,13 +292,33 @@ class ObscoreExporter:
                 for record_batch, _ in self._make_record_batches(self.config.batch_size):
                     writer.write_batch(record_batch)
 
-    def to_votable(self, limit: int | None = None) -> astropy.io.votable.tree.VOTableFile:
+    def _create_votable_info(
+        self, name: str, value: Any, *, content: str | None = None
+    ) -> astropy.io.votable.tree.Info:
+        """Create an INFO field with optional description.
+
+        Returns None if value is None.
+        """
+        info = astropy.io.votable.tree.Info(name=name, value=value)
+        if content:
+            info.content = content
+        return info
+
+    def to_votable(
+        self, limit: int | None = None, query_url: str | None = None, query_string: str | None = None
+    ) -> astropy.io.votable.tree.VOTableFile:
         """Run the export and return the results as a VOTable instance.
 
         Parameters
         ----------
         limit : `int` or `None`, optional
             Maximum number of records to return. If `None` there is no limit.
+        query_url : `str` or `None`, optional
+            Original query URL given to the SIA service. If provided, it will
+            be included in the VOTable in the DataOrigin metadata.
+        query_string : `str` or `None`, optional
+            A plain text version of the query parameters used for DataOrigin
+            metadata.
 
         Returns
         -------
@@ -343,6 +365,29 @@ class ObscoreExporter:
             )
         )
         votable.resources.append(resource)
+
+        origin_infos = [
+            self._create_votable_info("service_protocol", "ivo://ivoa.net/std/sia#query-2.0"),
+            self._create_votable_info(
+                "server_software",
+                f"lsst-dax-obscore version {__version__}",
+                content="Version of the service",
+            ),
+            self._create_votable_info(
+                "request_date",
+                datetime.datetime.now(tz=datetime.UTC).isoformat(timespec="seconds"),
+                content="Query execution date",
+            ),
+        ]
+        if query_url:
+            origin_infos.append(self._create_votable_info("request", query_url, content="Original query URL"))
+        if query_string:
+            origin_infos.append(
+                self._create_votable_info("query", query_string, content="Human-readable SIA query string")
+            )
+        if origin := self.config.origin:
+            origin_infos.append(self._create_votable_info("publisher", origin.publisher))
+        votable.infos.extend(origin_infos)
 
         fields = []
         for arrow_field in self.schema:
@@ -414,11 +459,30 @@ class ObscoreExporter:
         chunks = []
         n_rows = 0
         overflow = False
-        for record_batch, _ in self._make_record_batches(self.config.batch_size, limit=limit):
+        for record_batch, _overflow in self._make_record_batches(self.config.batch_size, limit=limit):
             table = ArrowTable.from_batches([record_batch])
             chunk = arrow_to_numpy(table)
             n_rows += len(chunk)
             chunks.append(chunk)
+            overflow = _overflow  # Appease B007 ruff check.
+
+        # Add data origin metadata where possible.
+        if origin:
+            origin_info = []
+            if origin.citation:
+                origin_info.append(self._create_votable_info("citation", origin.citation))
+            if origin.publication_date:
+                origin_info.append(
+                    self._create_votable_info(
+                        "publication_date", str(origin.publication_date), content="Date of publication"
+                    )
+                )
+            if origin.article:
+                origin_info.append(self._create_votable_info("article", origin.article))
+            if origin_info:
+                resource.infos.extend(origin_info)
+            if origin.title:
+                resource.description = origin.title
 
         # Report any overflow.
         query_status = "OVERFLOW" if overflow else "OK"

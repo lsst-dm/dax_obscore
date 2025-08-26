@@ -74,3 +74,11 @@ spectral_ranges:
   "i": [692.0e-9, 850.0e-9]
   "z": [852.0e-9, 928.0e-9]
   "y": [937.0e-9, 1015.0e-9]
+origin:
+  # These value are for testing purposes.
+  publisher: "NSF-DOE Vera C. Rubin Observatory US Data Access Center"
+  publication_date: 2025-06-30
+  citation: 10.71929/rubin/xxxxxxx
+  reference_url: "https://github.com/lsst/ci_hsc_gen3"
+  article: 10.71929/rubin/xxxxxx
+  title: "HSC integration test data"
