@@ -69,7 +69,9 @@ def obscore_update_table(
 
     for collection_record, dataset_type in _collections(registry, config):
         start_time = time.time()
-        refs = registry.queryDatasets(dataset_type, collections=collection_record.name).expanded()
+        refs = butler.query_datasets(
+            dataset_type, collections=collection_record.name, with_dimension_records=True
+        )
         if dry_run:
             for ref in refs:
                 _LOG.info("Will be adding dataset %s", ref)
