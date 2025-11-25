@@ -55,45 +55,46 @@ def obscore_update_table(
         If `True` then print the records that will be added, but do not
         actually add them.
     """
-    butler = Butler.from_config(repo, writeable=True)
-
-    # There is no client API for updating obscore table, so we need to access
-    # internals of the Registry and obscore manager.
-    # Have to use non-public Registry interface.
-    registry = butler._registry  # type: ignore
-    assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
-    manager = registry._managers.obscore
-    assert manager is not None, "Registry is not configured for obscore support"
-    assert isinstance(manager, ObsCoreLiveTableManager), f"Unexpected type of obscore manager {type(manager)}"
-    config = manager.config
-
-    for collection_record, dataset_type in _collections(registry, config):
-        start_time = time.time()
-        refs = butler.query_datasets(
-            dataset_type, collections=collection_record.name, with_dimension_records=True
+    with Butler.from_config(repo, writeable=True) as butler:
+        # There is no client API for updating obscore table, so we need to
+        # access internals of the Registry and obscore manager.
+        # Have to use non-public Registry interface.
+        registry = butler._registry  # type: ignore
+        assert isinstance(registry, SqlRegistry), "Registry must be SqlRegistry"
+        manager = registry._managers.obscore
+        assert manager is not None, "Registry is not configured for obscore support"
+        assert isinstance(manager, ObsCoreLiveTableManager), (
+            f"Unexpected type of obscore manager {type(manager)}"
         )
-        if dry_run:
-            for ref in refs:
-                _LOG.info("Will be adding dataset %s", ref)
-        else:
-            count = 0
-            if collection_record.type is CollectionType.RUN:
-                # Limit record number in single insert.
-                for refs_chunk in iteration.chunk_iterable(refs):
-                    count += manager.add_datasets(refs_chunk)
-            elif collection_record.type is CollectionType.TAGGED:
-                for refs_chunk in iteration.chunk_iterable(refs):
-                    count += manager.associate(refs_chunk, collection_record)
-            else:
-                raise ValueError(f"Unexpected collection type: {collection_record.type}")
-            end_time = time.time()
-            _LOG.info(
-                "Added %s records for dataset type %r and collection %r in %.0f seconds",
-                count,
-                dataset_type.name,
-                collection_record.name,
-                end_time - start_time,
+        config = manager.config
+
+        for collection_record, dataset_type in _collections(registry, config):
+            start_time = time.time()
+            refs = butler.query_datasets(
+                dataset_type, collections=collection_record.name, with_dimension_records=True
             )
+            if dry_run:
+                for ref in refs:
+                    _LOG.info("Will be adding dataset %s", ref)
+            else:
+                count = 0
+                if collection_record.type is CollectionType.RUN:
+                    # Limit record number in single insert.
+                    for refs_chunk in iteration.chunk_iterable(refs):
+                        count += manager.add_datasets(refs_chunk)
+                elif collection_record.type is CollectionType.TAGGED:
+                    for refs_chunk in iteration.chunk_iterable(refs):
+                        count += manager.associate(refs_chunk, collection_record)
+                else:
+                    raise ValueError(f"Unexpected collection type: {collection_record.type}")
+                end_time = time.time()
+                _LOG.info(
+                    "Added %s records for dataset type %r and collection %r in %.0f seconds",
+                    count,
+                    dataset_type.name,
+                    collection_record.name,
+                    end_time - start_time,
+                )
 
 
 def _collections(

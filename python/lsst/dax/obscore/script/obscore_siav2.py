@@ -92,8 +92,6 @@ def obscore_siav2(
         Name of file containing multiple IDs. Will be merged with any
         explicit ID values.
     """
-    butler = Butler.from_config(repo, writeable=False)
-
     config_data = Config(config)
     cfg = ExporterConfig.model_validate(config_data)
 
@@ -103,21 +101,22 @@ def obscore_siav2(
         # By default `id` is a tuple. Merge with any `--id` option.
         id = tuple(id) + ids
 
-    votable = siav2_query_from_raw(
-        butler,
-        cfg,
-        instrument=instrument,
-        pos=pos,
-        time=time,
-        band=band,
-        exptime=exptime,
-        calib=calib,
-        collections=collections,
-        dataset_type=dataset_type,
-        dpsubtype=dpsubtype,
-        dptype=dptype,
-        maxrec=maxrec,
-        id=id,
-        query_url=" ".join(sys.argv[1:]) if sys.argv else None,
-    )
+    with Butler.from_config(repo, writeable=False) as butler:
+        votable = siav2_query_from_raw(
+            butler,
+            cfg,
+            instrument=instrument,
+            pos=pos,
+            time=time,
+            band=band,
+            exptime=exptime,
+            calib=calib,
+            collections=collections,
+            dataset_type=dataset_type,
+            dpsubtype=dpsubtype,
+            dptype=dptype,
+            maxrec=maxrec,
+            id=id,
+            query_url=" ".join(sys.argv[1:]) if sys.argv else None,
+        )
     votable.to_xml(destination)
