@@ -160,6 +160,7 @@ class SIAv2TestCase(unittest.TestCase, DaxObsCoreTestMixin):
     def setUp(self):
         self.root = makeTestTempDir(TESTDIR)
         self.butler = self.make_butler()
+        self.enterContext(self.butler)
         self.butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
         self.config = self.make_export_config()
 

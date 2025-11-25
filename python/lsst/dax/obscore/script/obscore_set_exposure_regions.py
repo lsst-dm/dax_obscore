@@ -85,8 +85,38 @@ def obscore_set_exposure_regions(
     # Just to make sure that we have reasonable input
     assert len(region_columns) > 0, "Need at least one region-related column"
 
-    butler = Butler.from_config(repo, writeable=True)
+    with Butler.from_config(repo, writeable=True) as butler:
+        _obscore_set_exposure_regions(
+            butler,
+            repo,
+            check,
+            dry_run,
+            dataproduct_type,
+            dataproduct_subtype,
+            instrument,
+            exposure_column,
+            detector_column,
+            region_columns,
+        )
 
+
+def _obscore_set_exposure_regions(
+    butler: Butler,
+    repo: str,
+    check: bool,
+    dry_run: bool,
+    dataproduct_type: str,
+    dataproduct_subtype: str,
+    instrument: str | None,
+    exposure_column: str,
+    detector_column: str,
+    region_columns: Collection[str],
+) -> None:
+    """Script implementation taking butler rather than repo name.
+
+    Allows the context manager to be used without indenting all the
+    implementation code.
+    """
     registry = butler.registry
     if registry.obsCoreTableManager is None:
         raise ValueError(f"Repository {repo} does not have obscore table.")
