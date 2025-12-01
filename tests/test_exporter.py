@@ -51,6 +51,7 @@ class TestCase(unittest.TestCase, DaxObsCoreTestMixin):
     def test_schema(self):
         """Check how schema is constructed"""
         butler = self.make_butler()
+        self.enterContext(butler)
 
         config = ExporterConfig(version=0, obs_collection="", dataset_types={}, facility_name="FACILITY")
         xprtr = ObscoreExporter(butler, config)
@@ -125,6 +126,7 @@ class TestCase(unittest.TestCase, DaxObsCoreTestMixin):
     def test_export_parquet(self):
         """Test Parquet export method"""
         butler = self.make_butler()
+        self.enterContext(butler)
         butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
 
         config = self.make_export_config()
@@ -156,6 +158,7 @@ class TestCase(unittest.TestCase, DaxObsCoreTestMixin):
     def test_export_csv(self):
         """Test CSV export method"""
         butler = self.make_butler()
+        self.enterContext(butler)
         butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
 
         # try several options for null_string
@@ -185,6 +188,7 @@ class TestCase(unittest.TestCase, DaxObsCoreTestMixin):
     def test_export_votable(self):
         """Test Parquet export method"""
         butler = self.make_butler()
+        self.enterContext(butler)
         butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
 
         config = self.make_export_config()

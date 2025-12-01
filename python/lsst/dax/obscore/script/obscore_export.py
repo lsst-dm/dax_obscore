@@ -57,8 +57,6 @@ def obscore_export(
     dataset_type : `~collections.abc.Iterable` [ `str` ]
         Names of dataset types to export.
     """
-    butler = Butler.from_config(repo, writeable=False)
-
     config_data = Config(config)
     cfg = ExporterConfig.model_validate(config_data)
     if where:
@@ -68,12 +66,13 @@ def obscore_export(
     if dataset_type:
         cfg.select_dataset_types(dataset_type)
 
-    exporter = ObscoreExporter(butler, cfg)
-    if format == "parquet":
-        exporter.to_parquet(destination)
-    elif format == "csv":
-        exporter.to_csv(destination)
-    elif format == "votable":
-        exporter.to_votable_file(destination)
-    else:
-        raise ValueError(f"Unexpected output format {format:r}")
+    with Butler.from_config(repo, writeable=False) as butler:
+        exporter = ObscoreExporter(butler, cfg)
+        if format == "parquet":
+            exporter.to_parquet(destination)
+        elif format == "csv":
+            exporter.to_csv(destination)
+        elif format == "votable":
+            exporter.to_votable_file(destination)
+        else:
+            raise ValueError(f"Unexpected output format {format:r}")
