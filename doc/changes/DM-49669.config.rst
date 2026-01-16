@@ -1,1 +1,0 @@
-Modified the DP1 ObsTAP configuration to match the currently expected dataset types.

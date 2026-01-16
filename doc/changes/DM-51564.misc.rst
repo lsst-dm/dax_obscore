@@ -1,1 +1,0 @@
-Added ``COOSYS`` and ``TIMESYS`` references to the VOTable fields.
