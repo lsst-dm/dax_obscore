@@ -1,3 +1,23 @@
+lsst-dax-obscore v30.0.0 (2026-01-16)
+=====================================
+
+Changes to configurations
+-------------------------
+
+- Modified the DP1 ObsTAP configuration to match the currently expected dataset types. (`DM-49669 <https://rubinobs.atlassian.net/browse/DM-49669>`_)
+
+
+Miscellaneous Changes of Minor Interest
+---------------------------------------
+
+- Added ``obs_publisher_did`` format string to configurations. (`DM-51383 <https://rubinobs.atlassian.net/browse/DM-51383>`_)
+- * Removed detector from ``obs_id`` field.
+  * Fixed data type from arrow schema for integer fields.
+  * Corrected the data type for `int`` fields to "long" where needed in ObsCore model.
+  * Added pixel dimensions to DP1 config. (`DM-51495 <https://rubinobs.atlassian.net/browse/DM-51495>`_)
+- Added ``COOSYS`` and ``TIMESYS`` references to the VOTable fields. (`DM-51564 <https://rubinobs.atlassian.net/browse/DM-51564>`_)
+
+
 lsst-dax-obscore v29.0.0 (2025-03-26)
 =====================================
 

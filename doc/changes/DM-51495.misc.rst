@@ -1,4 +1,0 @@
-* Remove detector from obs_id field.
-* Fixed data type from arrow schema for integer fields.
-* Corrected the data type for int fields to "long" where needed in ObsCore model.
-* Added pixel dimensions to DP1 config.
