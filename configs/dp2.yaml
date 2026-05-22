@@ -1,11 +1,11 @@
 facility_name: Rubin:Simonyi
 facility_map:
-  LSSTComCam: "Rubin:Simonyi"
-obs_collection: LSST.DP1
-collections: ["LSSTComCam/DP1"]
+  LSSTCam: "Rubin:Simonyi"
+obs_collection: LSST.DP2
+collections: ["LSSTCam/runs/DRP/DP2"]
 use_butler_uri: false
-fallback_instrument: LSSTComCam
-obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-dp1?repo=dp1&id={id}"
+fallback_instrument: LSSTCam
+obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-dp2?repo=dp2&id={id}"
 dataset_types:
   raw:
     dataproduct_type: image
@@ -14,7 +14,7 @@ dataset_types:
     obs_id_fmt: "{records[exposure].obs_id}"
     o_ucd: phot.count
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp2%3Frepo%3Ddp2%26id%3D{id}"
     s_xel: [4608, 4096]
     extra_columns:
       obs_title:
@@ -26,7 +26,7 @@ dataset_types:
     obs_id_fmt: "{records[visit].name}"
     o_ucd: phot.flux.density
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp2%3Frepo%3Ddp2%26id%3D{id}"
     s_xel: [4072, 4000]
     extra_columns:
       obs_title:
@@ -38,8 +38,8 @@ dataset_types:
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.flux.density
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
-    s_xel: [3400, 3400]
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp2%3Frepo%3Ddp2%26id%3D{id}"
+    s_xel: [3300, 3300]
     extra_columns:
       obs_title:
         template: "{dataset_type} - {band} - tract={tract} patch={patch}"
@@ -48,10 +48,10 @@ dataset_types:
     dataproduct_subtype: lsst.template_coadd
     calib_level: 3
     obs_id_fmt: "{skymap}-{tract}-{patch}"
-    o_ucd: phot.flux_density
+    o_ucd: phot.flux.density
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
-    s_xel: [3400, 3400]
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp2%3Frepo%3Ddp2%26id%3D{id}"
+    s_xel: [3300, 3300]
     extra_columns:
       obs_title:
         template: "{dataset_type} - {band} - tract={tract} patch={patch}"
@@ -62,7 +62,7 @@ dataset_types:
     obs_id_fmt: "{records[visit].name}"
     o_ucd: phot.flux.density
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp2%3Frepo%3Ddp2%26id%3D{id}"
     s_xel: [4072, 4000]
     extra_columns:
       obs_title:
@@ -101,8 +101,8 @@ spectral_ranges:
   "y": [927.8e-9, 1100.0e-9]
 origin:
   publisher: "NSF-DOE Vera C. Rubin Observatory US Data Access Center"
-  publication_date: 2025-06-30
-  citation: 10.71929/rubin/2570308
-  reference_url: "https://dp1.lsst.io"
-  article: 10.71929/rubin/2570536
-  title: "Legacy Survey of Space and Time Data Preview 1"
+  publication_date: 2026-06-30
+  citation:
+  reference_url: "https://dp2.lsst.io"
+  article:
+  title: "Legacy Survey of Space and Time Data Preview 2"
