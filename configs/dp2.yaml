@@ -1,0 +1,108 @@
+facility_name: Rubin:Simonyi
+facility_map:
+  LSSTComCam: "Rubin:Simonyi"
+obs_collection: LSST.DP1
+collections: ["LSSTComCam/DP1"]
+use_butler_uri: false
+fallback_instrument: LSSTComCam
+obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-dp1?repo=dp1&id={id}"
+dataset_types:
+  raw:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.raw
+    calib_level: 1
+    obs_id_fmt: "{records[exposure].obs_id}"
+    o_ucd: phot.count
+    access_format: "application/x-votable+xml;content=datalink"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
+    s_xel: [4608, 4096]
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - {records[exposure].obs_id}-{records[detector].full_name} {records[exposure].timespan.begin.utc.isot}Z"
+  visit_image:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.visit_image
+    calib_level: 2
+    obs_id_fmt: "{records[visit].name}"
+    o_ucd: phot.flux.density
+    access_format: "application/x-votable+xml;content=datalink"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
+    s_xel: [4072, 4000]
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - {records[visit].name}-{records[detector].full_name} {records[visit].timespan.begin.utc.isot}Z"
+  deep_coadd:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.deep_coadd
+    calib_level: 3
+    obs_id_fmt: "{skymap}-{tract}-{patch}"
+    o_ucd: phot.flux.density
+    access_format: "application/x-votable+xml;content=datalink"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
+    s_xel: [3400, 3400]
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - tract={tract} patch={patch}"
+  template_coadd:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.template_coadd
+    calib_level: 3
+    obs_id_fmt: "{skymap}-{tract}-{patch}"
+    o_ucd: phot.flux_density
+    access_format: "application/x-votable+xml;content=datalink"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
+    s_xel: [3400, 3400]
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - tract={tract} patch={patch}"
+  difference_image:
+    dataproduct_type: image
+    dataproduct_subtype: lsst.difference_image
+    calib_level: 3
+    obs_id_fmt: "{records[visit].name}"
+    o_ucd: phot.flux.density
+    access_format: "application/x-votable+xml;content=datalink"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp1%3Frepo%3Ddp1%26id%3D{id}"
+    s_xel: [4072, 4000]
+    extra_columns:
+      obs_title:
+        template: "{dataset_type} - {band} - {records[visit].name}-{records[detector].full_name} {records[visit].timespan.begin.utc.isot}Z"
+extra_columns:
+  lsst_visit:
+    template: "{visit}"
+    type: "int"
+    doc: Visit or exposure identifier
+  lsst_detector:
+    template: "{detector}"
+    type: "int"
+    doc: Detector number of this observation
+  lsst_tract:
+    template: "{tract}"
+    type: "int"
+    doc: Tract within a skymap
+  lsst_patch:
+    template: "{patch}"
+    type: "int"
+    doc: Patch within a tract
+  lsst_band:
+    template: "{band}"
+    type: "string"
+    doc: Wavelength band for this observation
+  lsst_filter:
+    template: "{physical_filter}"
+    type: "string"
+    doc: Physical filter name for this observation
+spectral_ranges:
+  "u": [300.0e-9, 393.2e-9]
+  "g": [402.6e-9, 548.3e-9]
+  "r": [551.0e-9, 689.1e-9]
+  "i": [693.6e-9, 818.8e-9]
+  "z": [819.2e-9, 920.1e-9]
+  "y": [927.8e-9, 1100.0e-9]
+origin:
+  publisher: "NSF-DOE Vera C. Rubin Observatory US Data Access Center"
+  publication_date: 2025-06-30
+  citation: 10.71929/rubin/2570308
+  reference_url: "https://dp1.lsst.io"
+  article: 10.71929/rubin/2570536
+  title: "Legacy Survey of Space and Time Data Preview 1"
