@@ -105,13 +105,13 @@ with butler.query() as query:
         dataset_fields={dataset_type.name: ...},
         find_first=True,
     )
+    required_keys = sorted(
+        butler.dimensions[region_dim].minimal_group.required
+    )
     seen: set[tuple] = set()
     regions: list[Region] = []
     for dataId, _refs, raw_row in result.iter_tuples(dataset_type):
-        key = tuple(
-            dataId[k]
-            for k in butler.dimensions[region_dim].minimal_group.required
-        )
+        key = tuple(dataId[k] for k in required_keys)
         if key in seen:
             continue
         seen.add(key)
@@ -122,7 +122,8 @@ Notes:
 
 - Dedup key is the dataId restricted to the required keys of the region
   dimension (e.g., `(instrument, visit, detector)` for `visit_detector_region`,
-  `(skymap, tract, patch)` for `patch`).
+  `(skymap, tract, patch)` for `patch`). The required-key list is sorted
+  before iteration so the tuple ordering is stable across runs.
 - The exact API used to extract those required keys is the
   `DimensionElement.minimal_group.required` set; minor adjustments are
   acceptable during implementation as long as the dedup semantics match.
@@ -147,7 +148,10 @@ A single-extension binary table FITS file written with `astropy.io.fits`.
 - Extension name: `EXTNAME = 'REGIONS'`.
 - One column:
   - Name: `s_region`
-  - Type: variable-length string (astropy `Column(format='PA()')`).
+  - Type: string. Implementation may use either an astropy variable-length
+    character column (`PA(maxlen)`) or a fixed-width column (`An`) sized to
+    the longest STC-S string produced; choose whichever astropy and STILTS
+    handle most cleanly during implementation.
 - Column-level header keywords on the BinTableHDU header (column index 1):
   - `TUTYP1 = 'obscore:Char.SpatialAxis.Coverage.Support.Area'`
   - `TUCD1  = 'pos.outline;obs.field'`
