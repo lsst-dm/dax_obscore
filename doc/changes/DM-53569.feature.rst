@@ -1,0 +1,2 @@
+Added ``butler obscore export-regions`` subcommand that writes a FITS binary table of distinct IVOA STC-S region strings for datasets matching a dataset type, single collection, and optional where query.
+Suitable as input to the TOPCAT STILTS ``mocshape`` command.

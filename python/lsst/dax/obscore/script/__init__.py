@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .obscore_export import obscore_export
+from .obscore_export_regions import obscore_export_regions
 from .obscore_set_exposure_regions import obscore_set_exposure_regions
 from .obscore_siav2 import obscore_siav2
 from .obscore_update_table import obscore_update_table

@@ -24,6 +24,7 @@ from typing import Any
 import click
 
 from lsst.daf.butler.cli.opt import (
+    collection_argument,
     collections_option,
     dataset_type_option,
     destination_argument,
@@ -247,3 +248,30 @@ def siav2(*args: Any, **kwargs: Any) -> None:
     +Inf as options.
     """
     script.obscore_siav2(*args, **kwargs)
+
+
+@obscore.command(
+    short_help="Export distinct spatial regions for matching datasets as STC-S.",
+    cls=ButlerCommand,
+)
+@repo_argument(required=True)
+@click.argument("dataset_type", type=str)
+@collection_argument(help="The collection to search for datasets.")
+@destination_argument(
+    required=True,
+    help="DESTINATION is the location of the output FITS file.",
+    type=MWPath(file_okay=True, dir_okay=False, writable=True),
+)
+@where_option()
+@options_file_option()
+def export_regions(*args: Any, **kwargs: Any) -> None:
+    """Export distinct spatial regions for the datasets matching a query
+    as a FITS binary table of IVOA STC-S strings.
+
+    The output is suitable as input to the TOPCAT STILTS ``mocshape``
+    command. The dataset type's ``DimensionGroup.region_dimension`` is used
+    to decide which spatial dimension supplies the region, naturally
+    preferring ``visit_detector_region`` over ``visit`` and ``patch`` over
+    ``tract``.
+    """
+    script.obscore_export_regions(*args, **kwargs)
