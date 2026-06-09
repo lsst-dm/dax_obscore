@@ -1,3 +1,14 @@
+lsst-dax-obscore v30.0.8 (2026-06-09)
+=====================================
+
+New Features
+------------
+
+- Added ``butler obscore export-regions`` subcommand that writes a FITS binary table of distinct IVOA STC-S region strings for datasets matching a dataset type, single collection, and optional where query.
+  Suitable as input to the TOPCAT STILTS ``mocshape`` command. (`DM-53569 <https://rubinobs.atlassian.net/browse/DM-53569>`_)
+- Added an SIAv2 configuration for Prompt Data Products. (`DM-54169 <https://rubinobs.atlassian.net/browse/DM-54169>`_)
+
+
 lsst-dax-obscore v30.0.0 (2026-01-16)
 =====================================
 
