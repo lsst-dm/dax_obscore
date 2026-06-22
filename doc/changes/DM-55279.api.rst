@@ -1,0 +1,2 @@
+Added ``ObscoreExporter.iter_records()`` as a public row-oriented API for callers that need ObsCore records directly instead of file exports.
+The method reuses the existing internal batch generation path and yields plain Python dictionaries.
