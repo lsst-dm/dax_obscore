@@ -262,6 +262,23 @@ class ObscoreExporter:
             config, schema, universe, spatial_plugins, self._derived_region_factory
         )
 
+    def iter_records(self, limit: int | None = None) -> Iterator[dict[str, Any]]:
+        """Iterate over ObsCore records as Python row dictionaries.
+
+        Parameters
+        ----------
+        limit : `int` or `None`, optional
+            Maximum number of records to return. If `None`, yield all matching
+            records.
+
+        Yields
+        ------
+        record : `dict` [`str`, `~typing.Any`]
+            One ObsCore record, keyed by column name.
+        """
+        for record_batch, _ in self._make_record_batches(self.config.batch_size, limit=limit):
+            yield from record_batch.to_pylist()
+
     def to_parquet(self, output: str) -> None:
         """Export Butler datasets as ObsCore Data Model in parquet format.
 
