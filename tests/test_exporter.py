@@ -155,6 +155,72 @@ class TestCase(unittest.TestCase, DaxObsCoreTestMixin):
         for value in _to_python("s_region"):
             self.assertTrue(value.startswith("POLYGON "))
 
+    def test_iter_records(self):
+        """Test row-oriented ObsCore record iteration."""
+        butler = self.make_butler()
+        self.enterContext(butler)
+        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
+
+        config = self.make_export_config()
+        xprtr = ObscoreExporter(butler, config)
+        records = list(xprtr.iter_records())
+
+        self.assertEqual(len(records), 35)
+        self.assertEqual({frozenset(record) for record in records}, {frozenset(xprtr.schema.names)})
+        self.assertEqual({record["facility_name"] for record in records}, {"Subaru"})
+        self.assertEqual({record["obs_collection"] for record in records}, {"obs-collection"})
+        self.assertEqual({record["dataproduct_type"] for record in records}, {"image"})
+        self.assertEqual(
+            {record["dataproduct_subtype"] for record in records}, {"lsst.calexp", "lsst.deepCoadd"}
+        )
+        self.assertEqual({record["calib_level"] for record in records}, {2, 3})
+        self.assertEqual({record["instrument_name"] for record in records}, {"HSC", None})
+        self.assertEqual({record["em_filter_name"] for record in records}, {"i", "r"})
+        self.assertEqual({record["day_obs"] for record in records}, {20130617, 20131102, None})
+        for record in records:
+            self.assertTrue(record["s_region"].startswith("POLYGON "))
+
+    def test_iter_records_multiple_dataset_types(self):
+        """Record iteration can return multiple configured dataset types."""
+        butler = self.make_butler()
+        self.enterContext(butler)
+        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
+
+        config = self.make_export_config()
+        config.select_dataset_types(["_mock_calexp"])
+        xprtr = ObscoreExporter(butler, config)
+        calexp_records = list(xprtr.iter_records())
+
+        config = self.make_export_config()
+        config.select_dataset_types(["_mock_deepCoadd"])
+        xprtr = ObscoreExporter(butler, config)
+        deep_coadd_records = list(xprtr.iter_records())
+
+        config = self.make_export_config()
+        config.select_dataset_types(["_mock_calexp", "_mock_deepCoadd"])
+        xprtr = ObscoreExporter(butler, config)
+        combined_records = list(xprtr.iter_records())
+
+        self.assertGreater(len(calexp_records), 0)
+        self.assertGreater(len(deep_coadd_records), 0)
+        self.assertEqual(len(combined_records), len(calexp_records) + len(deep_coadd_records))
+        self.assertEqual(
+            {record["dataproduct_subtype"] for record in combined_records},
+            {"lsst.calexp", "lsst.deepCoadd"},
+        )
+
+    def test_iter_records_limit(self):
+        """A limit caps the number of iterated records."""
+        butler = self.make_butler()
+        self.enterContext(butler)
+        butler.import_(filename=os.path.join(TESTDIR, "data", "hsc_gen3.yaml"), without_datastore=True)
+
+        config = self.make_export_config()
+        xprtr = ObscoreExporter(butler, config)
+
+        self.assertEqual(len(list(xprtr.iter_records(limit=5))), 5)
+        self.assertEqual(list(xprtr.iter_records(limit=0)), [])
+
     def test_export_csv(self):
         """Test CSV export method"""
         butler = self.make_butler()
