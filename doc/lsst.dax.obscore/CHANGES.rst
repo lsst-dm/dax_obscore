@@ -1,3 +1,18 @@
+lsst-dax-obscore v30.0.9 (2026-07-14)
+=====================================
+
+New Features
+------------
+
+- Added initial Data Preview 2 configuration (`DM-55034 <https://rubinobs.atlassian.net/browse/DM-55034>`_)
+
+API Changes
+-----------
+
+- Added ``ObscoreExporter.iter_records()`` as a public row-oriented API for callers that need ObsCore records directly instead of file exports.
+  The method reuses the existing internal batch generation path and yields plain Python dictionaries. (`DM-55279 <https://rubinobs.atlassian.net/browse/DM-55279>`_)
+
+
 lsst-dax-obscore v30.0.8 (2026-06-09)
 =====================================
 
