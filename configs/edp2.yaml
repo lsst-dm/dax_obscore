@@ -54,7 +54,7 @@ spectral_ranges:
 origin:
   publisher: "NSF-DOE Vera C. Rubin Observatory US Data Access Center"
   publication_date: 2026-06-30
-  citation:
+  citation: 10.71929/rubin/3382528
   reference_url: "https://dp2.lsst.io"
-  article:
+  article: 10.71929/rubin/3377440
   title: "Legacy Survey of Space and Time Data Preview 2"
