@@ -14,7 +14,7 @@ dataset_types:
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.flux.density
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp2%3Frepo%3Ddp2%26id%3D{id}"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2fusdac%2Flsst-dp2%2Fdatasets%3Frepo%3Ddp2%26id%3D{id}"
     s_xel: [3300, 3300]
     extra_columns:
       obs_title:
