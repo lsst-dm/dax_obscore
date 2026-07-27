@@ -5,7 +5,7 @@ obs_collection: LSST.DP2
 collections: ["LSSTCam/runs/DRP/DP2"]
 use_butler_uri: false
 fallback_instrument: LSSTCam
-obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-dp2?repo=dp2&id={id}"
+obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-dp2/datasets?repo=dp2&id={id}"
 dataset_types:
   raw:
     dataproduct_type: image
