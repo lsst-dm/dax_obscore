@@ -78,16 +78,16 @@ That loop is extracted into a generator yielding one tuple per matching dataset:
 
 ```python
 def _iter_record_refs(
-    self, limit: int | None = None
-) -> Iterator[tuple[DatasetRef, Region | None, ResourcePath | None, dict[str, Any]]]:
+    self, state: _QueryState, limit: int | None = None
+) -> Iterator[tuple[DatasetRef, Region | None, dict[str, Any]]]:
 ```
 
 `_make_record_batches` becomes a thin wrapper that batches the generator's output.
-Overflow state is carried on a small mutable holder passed into the generator so that `to_votable`'s existing `OVERFLOW` reporting is unchanged.
+Overflow state is carried on a small mutable `_QueryState` holder passed into the generator so that `to_votable`'s existing `OVERFLOW` reporting is unchanged.
 `iter_records` and the three `to_*` methods keep their current signatures and behavior, and the existing tests in `tests/test_exporter.py` cover the refactor.
 
 Yielding `region` rather than re-parsing the `s_region` string matters: the loop already holds the `lsst.sphgeom.Region`, and a sphgeom `ConvexPolygon` converts directly into `caom2.shape.Polygon` vertices with no STC-S round-trip.
-Yielding `ref` gives `CaomExporter` the same format vocabulary that `obs_id_fmt` already uses, and the resolved `uri` supplies `Artifact.uri` as described under "ObsCore-side fixes".
+Yielding `ref` gives `CaomExporter` the same format vocabulary that `obs_id_fmt` already uses.
 
 ## Configuration
 
@@ -215,11 +215,15 @@ It stays `NULL`, and CAOM leaves `Position.resolution` unset.
 This is recorded here as a known ObsCore gap rather than papered over with a pixel scale on the CAOM side, which would be the wrong quantity.
 
 **The Butler file URI.**
-`Artifact.uri` needs the location of the file itself.
-ObsCore `access_url` is a DataLink URL whenever `use_butler_uri` is false, as it is in `configs/dp1.yaml`, so it cannot serve.
-The URI is resolved in bulk from the Butler datastore records for the refs returned by each query, not by a call per dataset, and is exposed as a fourth element of the shared generator's tuple so both exports can use it.
-This is the same access path the eventual `file_size` work described under "Known gaps" needs.
-`caom.artifact_uri_fmt` then rewrites that URI into the namespace CADC ingest expects, which is a genuinely CAOM-specific concern and correctly belongs in the `caom` block.
+`Artifact.uri` needs a URI in the namespace CADC ingest expects, which is a rewriting of the file location rather than the file location itself.
+ObsCore `access_url` cannot serve, because it is a DataLink URL whenever `use_butler_uri` is false, as it is in every configuration in `configs/`.
+Note in passing that `use_butler_uri` is dead configuration: it appears in nine YAML files and in `python/lsst/dax/obscore/tests.py`, and no code reads it, so pydantic silently discards it.
+Removing it is out of scope here but worth a follow-up.
+
+`caom.artifact_uri_fmt` is therefore the primary mechanism, expanded over the same namespace as every other template.
+It needs no datastore, which matters because the test butler is built with `without_datastore=True`.
+Resolving the real Butler URI is an optional extra: a bulk `_resolve_uris` helper on `ObscoreExporter`, using `Butler.get_many_uris` on the refs of each query rather than a call per dataset, exposing `{butler_uri}` to the template when a datastore is present and warning when it is not.
+The helper lives on the ObsCore side so both exports can use it, and it is the same access path the eventual `file_size` work described under "Known gaps" needs.
 
 `content_type` is a fourth candidate.
 It is not a standard ObsCore column, and `access_format` describes the DataLink response rather than the file, so it stays in the `caom` block for now.
@@ -249,7 +253,7 @@ dax_obscore then reads it from the record, and the placeholder key in the `caom`
 ## Data flow
 
 1. Validate that `caom.dataset_types` is a subset of `dataset_types`, then narrow the ObsCore configuration to those dataset types.
-2. Iterate the shared generator once per dataset type. For each `(ref, region, uri, record)`:
+2. Iterate the shared generator once per dataset type. For each `(ref, region, record)`:
    - Build a single format namespace containing the dataId mapping, `records`, `id`, `run`, `dataset_type`, and every finished ObsCore column, so that `{tract}`, `{records[visit].name}`, `{obs_id}` and `{lsst_patch}` are all usable in any template.
    - Expand `observation_id_fmt` and `product_id_fmt`.
    - Get or create the `Observation` in an in-memory mapping keyed by observation ID, then get or create the `Plane` within it.
