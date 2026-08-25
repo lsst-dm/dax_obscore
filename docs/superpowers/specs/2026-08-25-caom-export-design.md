@@ -51,6 +51,8 @@ The following are deliberately out of scope.
 | Auxiliary artifacts | In scope, listed per dataset type in configuration |
 | `Artifact.contentLength` | Unset in the prototype |
 | ObsCore gaps | Fixed on the ObsCore side and read from the record, never worked around in the CAOM layer |
+| Delivery | Phased; see "Phasing" |
+| Unit conversion | Always `astropy.units`; no hand-written conversion constants |
 
 ## Architecture
 
@@ -191,16 +193,20 @@ Two are fixed here; the third is recorded as a gap that registry records cannot 
 **Pixel scale.**
 CAOM `Position.sampleSize` is the pixel scale.
 ObsCore has no standard column for it, and it must not be conflated with `s_resolution`, which is the PSF FWHM.
-A new per-dataset-type key `s_pixel_scale`, in arcsec, is added to `DatasetTypeConfig` in `lsst.daf.butler.registry.obscore`, mirroring the existing `s_xel`, and surfaced on the record.
-This needs a companion `daf_butler` ticket.
-It sits with `s_xel` in the ObsCore configuration rather than in the `caom` block, so a single statement of the dataset type's geometry serves both exports.
+Its proper home is a new per-dataset-type key `s_pixel_scale`, in arcsec, on `DatasetTypeConfig` in `lsst.daf.butler.registry.obscore`, sitting beside the existing `s_xel` so that one statement of the dataset type's geometry serves both exports.
+That needs a companion `daf_butler` ticket and is phase 5.
+
+To keep the proof of concept self-contained, phase 2 accepts the same key inside the `caom` block instead:
 
 ```yaml
-dataset_types:
-  deep_coadd:
-    s_xel: [3400, 3400]
-    s_pixel_scale: 0.2      # arcsec, new
+caom:
+  dataset_types:
+    deep_coadd:
+      s_pixel_scale: 0.2    # arcsec; PLACEHOLDER, migrates to dataset_types.deep_coadd
 ```
+
+This is a deliberate placeholder, not the intended shape.
+The model field carries a docstring saying so and naming the migration, the documentation says so, and the value is read through a single accessor on `CaomConfig` so that phase 5 changes one function rather than the exporter.
 
 **`s_resolution`.**
 This is a standard ObsCore column that `RecordFactory` never populates, so DP1's published ObsCore output has it `NULL` today.
@@ -218,6 +224,27 @@ This is the same access path the eventual `file_size` work described under "Know
 `content_type` is a fourth candidate.
 It is not a standard ObsCore column, and `access_format` describes the DataLink response rather than the file, so it stays in the `caom` block for now.
 Whether it should instead join `s_xel` and `s_pixel_scale` as a per-dataset-type ObsCore key is an open question for review.
+
+## Phasing
+
+**Phase 1 — shared record generator.**
+Refactor `ObscoreExporter._make_record_batches` into `_iter_record_refs` plus a batching wrapper, with no change to any existing output.
+Covered by the existing `tests/test_exporter.py`.
+
+**Phase 2 — proof of concept.**
+`caom_config.py`, `caom_exporter.py`, the script layer and the CLI command, with `s_pixel_scale` as the placeholder described above.
+One artifact per record, no auxiliary dataset types.
+Enough to hand CADC real XML for DP1 `deep_coadd` and `visit_image`.
+
+**Phase 3 — completeness.**
+Auxiliary dataset types, the `caom` block in `configs/dp1.yaml` as the worked example, and the documentation page.
+
+**Phase 4 — CADC review.**
+Settle the grouping, the `Artifact.uri` form, the DOI question and `contentLength` against real output before locking anything in.
+
+**Phase 5 — migrate to ObsCore proper.**
+`daf_butler` ticket adding `s_pixel_scale` to `DatasetTypeConfig` and surfacing it on the record.
+dax_obscore then reads it from the record, and the placeholder key in the `caom` block is removed.
 
 ## Data flow
 
@@ -245,6 +272,15 @@ Two conflict rules apply, and both are logged.
 
 - Dataset types sharing an observation ID but disagreeing on instrument, intent, type or `derived` produce a warning, and the first record encountered wins.
 - Two records producing the same `(observation_id, product_id)` pair from different dataset types are a configuration error and abort the export, since distinct dataset types are expected to carry distinct product IDs.
+
+### Units
+
+All unit conversion goes through `astropy.units`.
+No conversion constant is written by hand anywhere in this work.
+
+`s_pixel_scale` reaches CAOM as `(value * u.arcsec).to_value(u.deg)`.
+The telescope geocentric coordinates reach CAOM as `location.geocentric[n].to_value(u.m)`.
+`em_min` and `em_max` are already metres in ObsCore and CAOM alike, and `t_min` and `t_max` are MJD in both, but both are still passed through explicit `to_value` calls so that the assumption is stated in the code rather than assumed.
 
 ### Region conversion
 
