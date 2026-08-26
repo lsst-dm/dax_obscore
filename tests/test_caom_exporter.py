@@ -141,6 +141,42 @@ class CaomExporterTestCase(unittest.TestCase, DaxObsCoreTestMixin):
         self.assertIn("observation_id_fmt", message)
         self.assertIn("slash", message)
 
+    def test_merges_across_dataset_types(self):
+        """Two dataset types sharing an observation ID share an Observation."""
+        from lsst.dax.obscore.caom_exporter import CaomExporter
+
+        butler = self.make_populated_butler()
+        config = self.make_caom_config()
+        # Give the coadd the same observation ID template as the calexp so
+        # that the two dataset types collide deliberately.
+        config.caom.dataset_types["_mock_deepCoadd"].observation_id_fmt = "shared-observation"
+        config.caom.dataset_types["_mock_calexp"].observation_id_fmt = "shared-observation"
+
+        with self.assertLogs("lsst.dax.obscore.caom_exporter", level="WARNING"):
+            observations = list(CaomExporter(butler, config).iter_observations())
+
+        self.assertEqual(len(observations), 1)
+        product_ids = set(observations[0].planes)
+        self.assertTrue(any(p.startswith("calexp-") for p in product_ids))
+        self.assertTrue(any(p.startswith("deepCoadd-") for p in product_ids))
+        levels = {plane.calibration_level for plane in observations[0].planes.values()}
+        self.assertEqual(levels, {caom2.CalibrationLevel.CALIBRATED, caom2.CalibrationLevel.PRODUCT})
+
+    def test_duplicate_product_id_is_an_error(self):
+        """Colliding product IDs from different dataset types abort."""
+        from lsst.dax.obscore.caom_exporter import CaomExporter
+
+        butler = self.make_populated_butler()
+        config = self.make_caom_config()
+        config.caom.dataset_types["_mock_deepCoadd"].observation_id_fmt = "shared-observation"
+        config.caom.dataset_types["_mock_calexp"].observation_id_fmt = "shared-observation"
+        config.caom.dataset_types["_mock_deepCoadd"].product_id_fmt = "collide"
+        config.caom.dataset_types["_mock_calexp"].product_id_fmt = "collide"
+
+        with self.assertRaises(ValueError) as cm:
+            list(CaomExporter(butler, config).iter_observations())
+        self.assertIn("collide", str(cm.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

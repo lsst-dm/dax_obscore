@@ -117,6 +117,10 @@ class CaomExporter:
         config.select_dataset_types(self.caom_config.dataset_types)
         self._obscore = ObscoreExporter(butler, config)
 
+        # Records which dataset type created each plane, so that a product
+        # ID collision between dataset types can be reported.
+        self._plane_owners: dict[tuple[str, str], str] = {}
+
     def iter_observations(self) -> Iterator[Any]:
         """Generate CAOM Observations for the configured dataset types.
 
@@ -196,6 +200,19 @@ class CaomExporter:
         if observation is None:
             observation = self._make_observation(observation_id, dataset_config, keywords, record)
             observations[observation_id] = observation
+        else:
+            self._check_observation_conflict(observation, dataset_config, keywords)
+
+        owner_key = (observation_id, product_id)
+        owner = self._plane_owners.get(owner_key)
+        if owner is None:
+            self._plane_owners[owner_key] = dataset_type
+        elif owner != dataset_type:
+            raise ValueError(
+                f"Product ID {product_id!r} in observation {observation_id!r} is produced by both "
+                f"{owner!r} and {dataset_type!r}. Dataset types sharing an observation must use "
+                "distinct 'product_id_fmt' templates."
+            )
 
         plane = observation.planes.get(product_id)
         if plane is None:
@@ -205,6 +222,48 @@ class CaomExporter:
         artifact = self._make_artifact(dataset_config, keywords, product_type_name="this")
         if artifact is not None:
             plane.artifacts[artifact.uri] = artifact
+
+    def _check_observation_conflict(
+        self, observation: Any, dataset_config: CaomDatasetTypeConfig, keywords: dict[str, Any]
+    ) -> None:
+        """Warn if a later dataset type disagrees on observation attributes.
+
+        Parameters
+        ----------
+        observation : `caom2.Observation`
+            The Observation created by an earlier dataset type.
+        dataset_config : `CaomDatasetTypeConfig`
+            CAOM configuration for the dataset type of the current record.
+        keywords : `dict` [ `str`, `~typing.Any` ]
+            Template namespace for the current record.
+
+        Notes
+        -----
+        The first dataset type to reach an observation ID sets the
+        observation-level attributes. A later disagreement is logged and
+        ignored, because there is no basis for choosing between them.
+        """
+        is_derived = isinstance(observation, caom2.DerivedObservation)
+        if is_derived != dataset_config.derived:
+            _LOG.warning(
+                "Observation %s was created as %s but dataset type %s configures derived=%s; "
+                "keeping the first.",
+                observation.observation_id,
+                type(observation).__name__,
+                keywords["dataset_type"],
+                dataset_config.derived,
+            )
+
+        if dataset_config.observation_type_fmt:
+            observation_type = dataset_config.observation_type_fmt.format(**keywords)
+            if observation_type != observation.type:
+                _LOG.warning(
+                    "Observation %s has type %r but dataset type %s gives %r; keeping the first.",
+                    observation.observation_id,
+                    observation.type,
+                    keywords["dataset_type"],
+                    observation_type,
+                )
 
     def _make_observation(
         self,
