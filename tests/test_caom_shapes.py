@@ -30,10 +30,14 @@ from lsst.dax.obscore import _caom_shapes
 class ImportGuardTestCase(unittest.TestCase):
     """Tests of the optional caom2 import guard."""
 
-    def test_require_caom2_succeeds_when_available(self):
-        """require_caom2 is a no-op when the library is installed."""
-        self.assertIsNotNone(_caom_shapes.caom2)
-        _caom_shapes.require_caom2()
+    def test_require_caom2(self):
+        """require_caom2 passes when caom2 is present and raises when not."""
+        if _caom_shapes.caom2 is not None:
+            _caom_shapes.require_caom2()
+        else:
+            with self.assertRaises(ImportError) as cm:
+                _caom_shapes.require_caom2()
+            self.assertIn("lsst-dax-obscore[caom]", str(cm.exception))
 
     def test_require_caom2_message_names_the_extra(self):
         """The failure message tells the user how to fix the problem."""
@@ -41,8 +45,28 @@ class ImportGuardTestCase(unittest.TestCase):
         self.assertIn("lsst-dax-obscore[caom]", message)
 
 
-class ConversionTestCase(unittest.TestCase):
-    """Tests of region and unit conversion."""
+class UnitConversionTestCase(unittest.TestCase):
+    """Tests of unit conversion, which does not need caom2."""
+
+    def test_none_region(self):
+        """A missing region converts to None rather than raising."""
+        self.assertIsNone(_caom_shapes.region_to_caom_shape(None))
+
+    def test_arcsec_to_degrees(self):
+        """Pixel scale converts from arcsec to degrees via astropy."""
+        self.assertAlmostEqual(
+            _caom_shapes.arcsec_to_degrees(0.2), (0.2 * u.arcsec).to_value(u.deg), places=12
+        )
+        self.assertIsNone(_caom_shapes.arcsec_to_degrees(None))
+
+    def test_metres(self):
+        """Length quantities convert to plain metres via astropy."""
+        self.assertAlmostEqual(_caom_shapes.metres(2.0 * u.km), 2000.0, places=9)
+
+
+@unittest.skipUnless(_caom_shapes.caom2 is not None, "caom2 is not installed")
+class RegionConversionTestCase(unittest.TestCase):
+    """Tests of region conversion, which needs caom2."""
 
     def test_convex_polygon(self):
         """A ConvexPolygon becomes a caom2 Polygon with matching vertices."""
@@ -83,10 +107,6 @@ class ConversionTestCase(unittest.TestCase):
         self.assertAlmostEqual(shape.width, 2.0, places=6)
         self.assertAlmostEqual(shape.height, 3.0, places=6)
 
-    def test_none_region(self):
-        """A missing region converts to None rather than raising."""
-        self.assertIsNone(_caom_shapes.region_to_caom_shape(None))
-
     def test_unsupported_region_warns(self):
         """An unsupported region logs a warning and yields None."""
         a = lsst.sphgeom.Circle(
@@ -101,17 +121,6 @@ class ConversionTestCase(unittest.TestCase):
 
         with self.assertLogs("lsst.dax.obscore._caom_shapes", level="WARNING"):
             self.assertIsNone(_caom_shapes.region_to_caom_shape(region))
-
-    def test_arcsec_to_degrees(self):
-        """Pixel scale converts from arcsec to degrees via astropy."""
-        self.assertAlmostEqual(
-            _caom_shapes.arcsec_to_degrees(0.2), (0.2 * u.arcsec).to_value(u.deg), places=12
-        )
-        self.assertIsNone(_caom_shapes.arcsec_to_degrees(None))
-
-    def test_metres(self):
-        """Length quantities convert to plain metres via astropy."""
-        self.assertAlmostEqual(_caom_shapes.metres(2.0 * u.km), 2000.0, places=9)
 
 
 if __name__ == "__main__":
