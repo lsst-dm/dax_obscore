@@ -121,6 +121,9 @@ class CaomExporter:
         # ID collision between dataset types can be reported.
         self._plane_owners: dict[tuple[str, str], str] = {}
 
+        # Butler URIs for the current export, keyed by dataset ID.
+        self._uris: dict[Any, str] = {}
+
     def iter_observations(self) -> Iterator[Any]:
         """Generate CAOM Observations for the configured dataset types.
 
@@ -131,7 +134,11 @@ class CaomExporter:
         """
         observations: dict[str, Any] = {}
         state = _QueryState()
-        for ref, region, record in self._obscore._iter_record_refs(state):
+        pending: list[tuple[DatasetRef, Region | None, dict[str, Any]]] = list(
+            self._obscore._iter_record_refs(state)
+        )
+        self._uris = self._obscore._resolve_uris([ref for ref, _, _ in pending])
+        for ref, region, record in pending:
             self._add_record(observations, ref, region, record)
         yield from observations.values()
 
@@ -155,6 +162,7 @@ class CaomExporter:
         keywords: dict[str, Any] = {"records": ref.dataId.records}
         keywords.update(ref.dataId.mapping)
         keywords.update(id=ref.id, run=ref.run, dataset_type=ref.datasetType.name)
+        keywords.update(butler_uri=self._uris.get(ref.id, ""))
         keywords.update(record)
         return keywords
 

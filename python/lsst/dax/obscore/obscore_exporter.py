@@ -294,6 +294,42 @@ class ObscoreExporter:
         for record_batch, _ in self._make_record_batches(self.config.batch_size, limit=limit):
             yield from record_batch.to_pylist()
 
+    def _resolve_uris(self, refs: list[DatasetRef]) -> dict[Any, str]:
+        """Resolve Butler URIs for a batch of dataset references.
+
+        Parameters
+        ----------
+        refs : `list` [ `~lsst.daf.butler.DatasetRef` ]
+            References to resolve.
+
+        Returns
+        -------
+        uris : `dict` [ `~lsst.daf.butler.DatasetId`, `str` ]
+            Mapping from dataset ID to primary URI. Datasets with no
+            resolvable URI are absent, and the mapping is empty if the
+            butler has no datastore.
+
+        Notes
+        -----
+        Resolution is done in bulk rather than one call per dataset. A
+        butler without a datastore, or files that are not present, produce
+        a warning rather than an error, because the CAOM export can fall
+        back to a configured URI template.
+        """
+        if not refs:
+            return {}
+        try:
+            resolved = self.butler.get_many_uris(refs, predict=False)
+        except Exception as exc:
+            _LOG.warning("Could not resolve Butler URIs (%s); falling back to configured templates.", exc)
+            return {}
+
+        uris: dict[Any, str] = {}
+        for ref, ref_uris in resolved.items():
+            if ref_uris.primaryURI is not None:
+                uris[ref.id] = str(ref_uris.primaryURI)
+        return uris
+
     def to_parquet(self, output: str) -> None:
         """Export Butler datasets as ObsCore Data Model in parquet format.
 

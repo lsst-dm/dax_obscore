@@ -177,6 +177,34 @@ class CaomExporterTestCase(unittest.TestCase, DaxObsCoreTestMixin):
             list(CaomExporter(butler, config).iter_observations())
         self.assertIn("collide", str(cm.exception))
 
+    def test_uri_template_without_datastore(self):
+        """A datastore-less butler still exports, using the URI template."""
+        from lsst.dax.obscore.caom_exporter import CaomExporter
+
+        butler = self.make_populated_butler()
+        config = self.make_single_type_config("_mock_calexp")
+
+        exporter = CaomExporter(butler, config)
+        with self.assertLogs("lsst.dax.obscore.obscore_exporter", level="WARNING"):
+            observations = list(exporter.iter_observations())
+
+        plane = next(iter(observations[0].planes.values()))
+        artifact = next(iter(plane.artifacts.values()))
+        self.assertTrue(artifact.uri.startswith("cadc:TEST/_mock_calexp/"))
+
+    def test_butler_uri_keyword_is_available(self):
+        """{butler_uri} expands to empty string when there is no datastore."""
+        from lsst.dax.obscore.caom_exporter import CaomExporter
+
+        butler = self.make_populated_butler()
+        config = self.make_single_type_config("_mock_calexp")
+        config.caom.artifact_uri_fmt = "cadc:TEST/{butler_uri}{id}"
+
+        observations = list(CaomExporter(butler, config).iter_observations())
+        plane = next(iter(observations[0].planes.values()))
+        artifact = next(iter(plane.artifacts.values()))
+        self.assertTrue(artifact.uri.startswith("cadc:TEST/"))
+
 
 if __name__ == "__main__":
     unittest.main()
