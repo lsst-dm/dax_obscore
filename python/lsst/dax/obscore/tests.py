@@ -119,6 +119,7 @@ class DaxObsCoreTestMixin:
                         "observation_id_fmt": "{records[visit].name}",
                         "product_id_fmt": "calexp-{detector}",
                         "s_pixel_scale": 0.17,
+                        "auxiliary_datasets": {"_mock_calexp_background": "auxiliary"},
                     },
                     "_mock_deepCoadd": {
                         "observation_id_fmt": "coadd-{tract}",

@@ -89,11 +89,16 @@ class CaomExporterTestCase(unittest.TestCase, DaxObsCoreTestMixin):
                 self.assertIn(caom2.EnergyBand.OPTICAL, plane.energy.energy_bands)
                 self.assertIsNotNone(plane.time)
                 self.assertGreaterEqual(len(plane.artifacts), 1)
+                primary = [
+                    artifact
+                    for artifact in plane.artifacts.values()
+                    if artifact.product_type == caom2.ProductType.THIS
+                ]
+                self.assertEqual(len(primary), 1)
                 for artifact in plane.artifacts.values():
-                    self.assertTrue(artifact.uri.startswith("cadc:TEST/_mock_calexp/"))
                     self.assertEqual(artifact.content_type, "application/fits")
                     self.assertEqual(artifact.release_type, caom2.ReleaseType.DATA)
-                    self.assertEqual(artifact.product_type, caom2.ProductType.THIS)
+                self.assertTrue(primary[0].uri.startswith("cadc:TEST/_mock_calexp/"))
 
     def test_coadd_is_derived(self):
         """Coadd records produce DerivedObservations keyed on tract."""
@@ -223,6 +228,22 @@ class CaomExporterTestCase(unittest.TestCase, DaxObsCoreTestMixin):
             with open(os.path.join(destination, name), "rb") as handle:
                 head = handle.read(512)
             self.assertIn(b"Observation", head)
+
+    def test_auxiliary_artifacts(self):
+        """Auxiliary dataset types add artifacts to the matching plane."""
+        from lsst.dax.obscore.caom_exporter import CaomExporter
+
+        butler = self.make_populated_butler()
+        config = self.make_single_type_config("_mock_calexp")
+
+        observations = list(CaomExporter(butler, config).iter_observations())
+
+        plane = next(iter(observations[0].planes.values()))
+        product_types = {artifact.product_type for artifact in plane.artifacts.values()}
+        self.assertIn(caom2.ProductType.THIS, product_types)
+        self.assertIn(caom2.ProductType.AUXILIARY, product_types)
+        uris = {artifact.uri for artifact in plane.artifacts.values()}
+        self.assertTrue(any("_mock_calexp_background" in uri for uri in uris))
 
 
 if __name__ == "__main__":

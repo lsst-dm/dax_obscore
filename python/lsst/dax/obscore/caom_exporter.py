@@ -177,13 +177,15 @@ class CaomExporter:
             One Observation per distinct expanded ``observation_id_fmt``.
         """
         observations: dict[str, Any] = {}
+        plane_data_ids: dict[tuple[str, str], Any] = {}
         state = _QueryState()
         pending: list[tuple[DatasetRef, Region | None, dict[str, Any]]] = list(
             self._obscore._iter_record_refs(state)
         )
         self._uris = self._obscore._resolve_uris([ref for ref, _, _ in pending])
         for ref, region, record in pending:
-            self._add_record(observations, ref, region, record)
+            self._add_record(observations, plane_data_ids, ref, region, record)
+        self._add_auxiliary_artifacts(observations, plane_data_ids)
         yield from observations.values()
 
     def to_directory(self, destination: str, validate: bool = True) -> int:
@@ -242,6 +244,7 @@ class CaomExporter:
     def _add_record(
         self,
         observations: dict[str, Any],
+        plane_data_ids: dict[tuple[str, str], Any],
         ref: DatasetRef,
         region: Region | None,
         record: dict[str, Any],
@@ -253,6 +256,10 @@ class CaomExporter:
         observations : `dict` [ `str`, `caom2.Observation` ]
             Observations accumulated so far, keyed by observation ID.
             Updated in place.
+        plane_data_ids : `dict` [ `tuple` [ `str`, `str` ], \
+                `~lsst.daf.butler.DataCoordinate` ]
+            Data ID of the primary record for each plane, keyed by
+            observation and product identifier. Updated in place.
         ref : `~lsst.daf.butler.DatasetRef`
             Reference to the dataset.
         region : `~lsst.sphgeom.Region` or `None`
@@ -300,9 +307,72 @@ class CaomExporter:
             plane = self._make_plane(product_id, dataset_config, ref, region, record)
             observation.planes[product_id] = plane
 
+        plane_data_ids[owner_key] = ref.dataId
+
         artifact = self._make_artifact(dataset_config, keywords, product_type_name="this")
         if artifact is not None:
             plane.artifacts[artifact.uri] = artifact
+
+    def _add_auxiliary_artifacts(
+        self, observations: dict[str, Any], plane_data_ids: dict[tuple[str, str], Any]
+    ) -> None:
+        """Attach auxiliary dataset artifacts to the planes they belong to.
+
+        Parameters
+        ----------
+        observations : `dict` [ `str`, `caom2.Observation` ]
+            Observations built from the primary dataset types. Updated in
+            place.
+        plane_data_ids : `dict` [ `tuple` [ `str`, `str` ], \
+                `~lsst.daf.butler.DataCoordinate` ]
+            Data ID of the primary record for each plane, keyed by
+            observation and product identifier.
+
+        Notes
+        -----
+        Each auxiliary dataset type is queried once and its results indexed
+        by data ID, rather than issuing a lookup for every plane.
+        """
+        collections = self.config.collections
+        for dataset_type, config in self.caom_config.dataset_types.items():
+            for auxiliary_type, product_type_name in config.auxiliary_datasets.items():
+                try:
+                    # with_dimension_records so auxiliary templates can use
+                    # {records[...]}; limit=None so a large auxiliary
+                    # dataset type is never silently truncated.
+                    refs = self.butler.query_datasets(
+                        auxiliary_type,
+                        collections=collections,
+                        with_dimension_records=True,
+                        limit=None,
+                        explain=False,
+                    )
+                except Exception as exc:
+                    _LOG.warning("Could not query auxiliary dataset type %s: %s", auxiliary_type, exc)
+                    continue
+
+                by_data_id = {ref.dataId: ref for ref in refs}
+                self._uris.update(self._obscore._resolve_uris(list(by_data_id.values())))
+
+                attached = 0
+                for (observation_id, product_id), data_id in plane_data_ids.items():
+                    if self._plane_owners.get((observation_id, product_id)) != dataset_type:
+                        continue
+                    ref = by_data_id.get(data_id)
+                    if ref is None:
+                        continue
+                    keywords = self._format_keywords(ref, {})
+                    artifact = self._make_artifact(config, keywords, product_type_name)
+                    if artifact is not None:
+                        observations[observation_id].planes[product_id].artifacts[artifact.uri] = artifact
+                        attached += 1
+
+                _LOG.info(
+                    "Attached %d auxiliary artifact%s of type %s",
+                    attached,
+                    "" if attached == 1 else "s",
+                    auxiliary_type,
+                )
 
     def _check_observation_conflict(
         self, observation: Any, dataset_config: CaomDatasetTypeConfig, keywords: dict[str, Any]
