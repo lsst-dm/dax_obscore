@@ -162,14 +162,24 @@ Every ``_fmt`` attribute is a :py:meth:`str.format` template expanded against on
 
 Auxiliary dataset types have no ObsCore record, so a template used for one may refer only to the data ID, ``id``, ``run``, ``dataset_type`` and ``butler_uri``.
 
-Identifiers must be legal in a CAOM URI
----------------------------------------
+Identifiers are normalized for CAOM URIs
+----------------------------------------
 
 CAOM identifies an observation by a ``caom:<collection>/<observation_id>`` URI, and a URI path component may not contain a space, slash, backslash or percent character.
-An expanded ``observation_id_fmt`` or ``product_id_fmt`` containing one of those characters is reported as an error naming the template.
-The identifier is never rewritten to make it legal, because it is the identifier CADC ingests; the configuration must produce a legal one.
+Dimension values legitimately contain those characters, a skymap named ``discrete/ci_hsc`` being the obvious case, and a :py:meth:`str.format` template offers no way to transform a value before substituting it.
+Refusing such identifiers would therefore make whole dataset types unexportable with no configuration that could fix it.
 
-A skymap named ``discrete/ci_hsc`` therefore cannot be used in an observation identifier, while ``lsst_cells_v1`` can.
+Each expanded ``observation_id_fmt`` and ``product_id_fmt`` is instead normalized, with every space, slash, backslash and percent replaced by an underscore.
+A skymap named ``discrete/ci_hsc`` yields the observation identifier ``discrete_ci_hsc-0`` rather than an error.
+Each distinct substitution is reported once at ``WARNING`` level, naming the original identifier, the exported identifier and the template, so the change is never silent.
+
+Normalization is not injective: ``a/b`` and ``a_b`` both become ``a_b``.
+Collapsing two genuinely different identifiers onto one would merge unrelated records into a single observation or plane, so the exporter records the source identifier behind each normalized one and aborts if a second, different source claims it.
+Observation identifiers are checked across the whole export.
+Product identifiers are checked within their observation, since the same product identifier recurs legitimately across observations.
+
+Butler RUN collection names routinely contain slashes and are **not** normalized.
+``Provenance.runID`` is an ordinary string attribute rather than a URI path component, so ``HSC/runs/ci_hsc`` is recorded exactly as it appears in the repository.
 
 Observation merging
 ===================

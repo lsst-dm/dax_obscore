@@ -130,8 +130,8 @@ class CaomExporterTestCase(unittest.TestCase, DaxObsCoreTestMixin):
 
         self.assertAlmostEqual(plane.position.sample_size, (0.17 * u.arcsec).to_value(u.deg), places=12)
 
-    def test_illegal_observation_id_rejected(self):
-        """An identifier CAOM cannot put in a URI is reported clearly."""
+    def test_illegal_observation_id_sanitized(self):
+        """An identifier illegal in a URI is sanitized, with a warning."""
         from lsst.dax.obscore.caom_exporter import CaomExporter
 
         butler = self.make_populated_butler()
@@ -140,11 +140,49 @@ class CaomExporterTestCase(unittest.TestCase, DaxObsCoreTestMixin):
         # expands to an identifier containing a slash.
         config.caom.dataset_types["_mock_deepCoadd"].observation_id_fmt = "{skymap}-{tract}"
 
+        with self.assertLogs("lsst.dax.obscore.caom_exporter", level="WARNING") as logs:
+            observations = list(CaomExporter(butler, config).iter_observations())
+
+        self.assertGreater(len(observations), 0)
+        for observation in observations:
+            self.assertTrue(observation.observation_id.startswith("discrete_ci_hsc-"))
+        # The substitution is reported once per distinct identifier rather
+        # than once per record, so there are fewer warnings than planes.
+        substitution_warnings = [line for line in logs.output if "observation_id_fmt" in line]
+        self.assertEqual(len(substitution_warnings), len(observations))
+        total_planes = sum(len(observation.planes) for observation in observations)
+        self.assertGreater(total_planes, len(substitution_warnings))
+
+    def test_sanitized_identifier_collision_detected(self):
+        """Two identifiers collapsing onto one abort rather than merge."""
+        from lsst.dax.obscore.caom_exporter import CaomExporter
+
+        butler = self.make_populated_butler()
+        config = self.make_caom_config()
+        # These differ only in a character that sanitization removes, so
+        # both become "shared_observation".
+        config.caom.dataset_types["_mock_calexp"].observation_id_fmt = "shared/observation"
+        config.caom.dataset_types["_mock_deepCoadd"].observation_id_fmt = "shared_observation"
+
         with self.assertRaises(ValueError) as cm:
             list(CaomExporter(butler, config).iter_observations())
         message = str(cm.exception)
-        self.assertIn("observation_id_fmt", message)
-        self.assertIn("slash", message)
+        self.assertIn("shared_observation", message)
+        self.assertIn("merge unrelated records", message)
+
+    def test_product_id_collision_is_scoped_to_observation(self):
+        """The same product ID in different observations is not a collision."""
+        from lsst.dax.obscore.caom_exporter import CaomExporter
+
+        butler = self.make_populated_butler()
+        config = self.make_single_type_config("_mock_calexp")
+        # Every visit has a detector 23 plane, so this product ID recurs
+        # across observations and must not be treated as a collision.
+        observations = list(CaomExporter(butler, config).iter_observations())
+
+        self.assertGreater(len(observations), 1)
+        repeated = [o for o in observations if "calexp-23" in o.planes]
+        self.assertGreater(len(repeated), 1)
 
     def test_merges_across_dataset_types(self):
         """Two dataset types sharing an observation ID share an Observation."""

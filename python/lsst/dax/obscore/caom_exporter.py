@@ -44,48 +44,34 @@ from .obscore_exporter import ObscoreExporter, _QueryState
 _LOG = getLogger(__name__)
 
 # CAOM identifiers become components of a "caom:<collection>/<id>" URI, and
-# caom2.caom_util.validate_path_component rejects a component containing any
-# of these characters.
-_INVALID_URI_COMPONENT_CHARS = (" ", "/", "\\", "%")
+# caom2.caom_util.validate_path_component rejects a component containing a
+# space, slash, backslash or percent.
+_INVALID_URI_COMPONENT_RE = re.compile(r"[ /\\%]")
 
 
-def _validate_uri_component(kind: str, value: str, template: str, dataset_type: str) -> str:
-    """Check an expanded identifier is legal in a CAOM URI.
+def _sanitize_uri_component(value: str) -> str:
+    """Replace characters CAOM does not allow in a URI path component.
 
     Parameters
     ----------
-    kind : `str`
-        Name of the configuration key, used in the error message.
     value : `str`
         The expanded identifier.
-    template : `str`
-        The template that produced it.
-    dataset_type : `str`
-        Dataset type the template belongs to.
 
     Returns
     -------
-    value : `str`
-        The identifier, unchanged.
-
-    Raises
-    ------
-    ValueError
-        Raised if the identifier contains a character CAOM does not allow.
+    sanitized : `str`
+        The identifier with every space, slash, backslash and percent
+        replaced by an underscore.
 
     Notes
     -----
-    The identifier is not rewritten to make it legal, because it is the
-    identifier CADC ingests; the configuration must produce a legal one.
+    Dimension values such as skymap names legitimately contain slashes, and
+    `str.format` templates offer no way to transform them, so refusing to
+    export would make whole dataset types unexportable. The substitution is
+    not injective, so callers must check that two different identifiers have
+    not been collapsed onto one.
     """
-    bad = [char for char in _INVALID_URI_COMPONENT_CHARS if char in value]
-    if bad:
-        raise ValueError(
-            f"{kind} {value!r} for dataset type {dataset_type!r} contains {bad}, which CAOM does not "
-            f"allow in a URI path component (space, slash, backslash and percent are forbidden). "
-            f"Adjust the {kind} template {template!r}."
-        )
-    return value
+    return _INVALID_URI_COMPONENT_RE.sub("_", value)
 
 
 def _interval(lower: float, upper: float) -> Any:
@@ -167,6 +153,16 @@ class CaomExporter:
 
         # Butler URIs for the current export, keyed by dataset ID.
         self._uris: dict[Any, str] = {}
+
+        # Source identifiers behind each sanitized identifier, so that two
+        # different identifiers collapsing onto one can be reported.
+        # Observation identifiers are global; product identifiers are scoped
+        # to their observation.
+        self._observation_id_sources: dict[str, str] = {}
+        self._product_id_sources: dict[tuple[str, str], str] = {}
+
+        # Substitutions already reported, so each is warned about once.
+        self._warned_substitutions: set[tuple[str, str]] = set()
 
     def iter_observations(self) -> Iterator[Any]:
         """Generate CAOM Observations for the configured dataset types.
@@ -271,17 +267,20 @@ class CaomExporter:
         dataset_config = self.caom_config.dataset_types[dataset_type]
         keywords = self._format_keywords(ref, record)
 
-        observation_id = _validate_uri_component(
+        observation_id = self._identifier(
             "observation_id_fmt",
             dataset_config.observation_id_fmt.format(**keywords),
             dataset_config.observation_id_fmt,
             dataset_type,
+            self._observation_id_sources,
         )
-        product_id = _validate_uri_component(
+        product_id = self._identifier(
             "product_id_fmt",
             dataset_config.product_id_fmt.format(**keywords),
             dataset_config.product_id_fmt,
             dataset_type,
+            self._product_id_sources,
+            scope=observation_id,
         )
 
         observation = observations.get(observation_id)
@@ -312,6 +311,69 @@ class CaomExporter:
         artifact = self._make_artifact(dataset_config, keywords, product_type_name="this")
         if artifact is not None:
             plane.artifacts[artifact.uri] = artifact
+
+    def _identifier(
+        self,
+        kind: str,
+        raw: str,
+        template: str,
+        dataset_type: str,
+        sources: dict[Any, str],
+        scope: str | None = None,
+    ) -> str:
+        """Turn an expanded template into a legal CAOM identifier.
+
+        Parameters
+        ----------
+        kind : `str`
+            Name of the configuration key, used in messages.
+        raw : `str`
+            The identifier as the template produced it.
+        template : `str`
+            The template that produced it.
+        dataset_type : `str`
+            Dataset type the template belongs to.
+        sources : `dict`
+            Mapping from sanitized identifier to the source identifier that
+            claimed it, updated in place.
+        scope : `str` or `None`, optional
+            Identifier this one is nested within, if any. Product
+            identifiers are unique only within their observation, so they
+            are keyed by ``(scope, sanitized)``.
+
+        Returns
+        -------
+        sanitized : `str`
+            The identifier, legal as a CAOM URI path component.
+
+        Raises
+        ------
+        ValueError
+            Raised if two different source identifiers sanitize to the same
+            value, which would silently merge unrelated records.
+        """
+        sanitized = _sanitize_uri_component(raw)
+        if sanitized != raw and (kind, raw) not in self._warned_substitutions:
+            self._warned_substitutions.add((kind, raw))
+            _LOG.warning(
+                "%s %r for dataset type %s contains characters CAOM does not allow in a URI path "
+                "component; exporting it as %r. Template: %s.",
+                kind,
+                raw,
+                dataset_type,
+                sanitized,
+                template,
+            )
+
+        key: Any = sanitized if scope is None else (scope, sanitized)
+        previous = sources.setdefault(key, raw)
+        if previous != raw:
+            raise ValueError(
+                f"{kind} values {previous!r} and {raw!r} for dataset type {dataset_type!r} both "
+                f"sanitize to {sanitized!r}, which would merge unrelated records into one. "
+                f"Adjust the {kind} template {template!r} so the identifiers stay distinct."
+            )
+        return sanitized
 
     def _add_auxiliary_artifacts(
         self, observations: dict[str, Any], plane_data_ids: dict[tuple[str, str], Any]
