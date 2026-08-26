@@ -205,6 +205,25 @@ class CaomExporterTestCase(unittest.TestCase, DaxObsCoreTestMixin):
         artifact = next(iter(plane.artifacts.values()))
         self.assertTrue(artifact.uri.startswith("cadc:TEST/"))
 
+    def test_to_directory_writes_valid_xml(self):
+        """Documents are written per Observation and validate against XSD."""
+        from lsst.dax.obscore.caom_exporter import CaomExporter
+
+        butler = self.make_populated_butler()
+        config = self.make_caom_config()
+        destination = os.path.join(self.root, "caom")
+
+        count = CaomExporter(butler, config).to_directory(destination)
+
+        self.assertGreater(count, 0)
+        written = sorted(os.listdir(destination))
+        self.assertEqual(len(written), count)
+        for name in written:
+            self.assertTrue(name.endswith(".xml"))
+            with open(os.path.join(destination, name), "rb") as handle:
+                head = handle.read(512)
+            self.assertIn(b"Observation", head)
+
 
 if __name__ == "__main__":
     unittest.main()

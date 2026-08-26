@@ -24,6 +24,8 @@ from __future__ import annotations
 __all__ = ["CaomExporter"]
 
 import datetime
+import os
+import re
 from collections.abc import Iterator
 from typing import Any
 
@@ -86,6 +88,48 @@ def _validate_uri_component(kind: str, value: str, template: str, dataset_type: 
     return value
 
 
+def _interval(lower: float, upper: float) -> Any:
+    """Build a CAOM interval covering a single contiguous range.
+
+    Parameters
+    ----------
+    lower : `float`
+        Lower bound.
+    upper : `float`
+        Upper bound.
+
+    Returns
+    -------
+    interval : `caom2.Interval`
+        The interval, with the single sub-interval the CAOM schema
+        requires.
+
+    Notes
+    -----
+    The CAOM 2.4 schema makes ``samples`` mandatory on a bounds element,
+    so an interval without one fails validation. Our ranges are always
+    contiguous, so the sample list holds exactly one sub-interval.
+    """
+    return caom2.Interval(lower, upper, samples=[caom2.shape.SubInterval(lower, upper)])
+
+
+def _safe_filename(observation_id: str) -> str:
+    """Convert an observation identifier into a safe file name.
+
+    Parameters
+    ----------
+    observation_id : `str`
+        CAOM observation identifier.
+
+    Returns
+    -------
+    name : `str`
+        The identifier with characters that are awkward in file names
+        replaced by underscores.
+    """
+    return re.sub(r"[^A-Za-z0-9._-]", "_", observation_id)
+
+
 class CaomExporter:
     """Export Butler datasets as CAOM Observations.
 
@@ -141,6 +185,35 @@ class CaomExporter:
         for ref, region, record in pending:
             self._add_record(observations, ref, region, record)
         yield from observations.values()
+
+    def to_directory(self, destination: str, validate: bool = True) -> int:
+        """Write one CAOM XML document per Observation.
+
+        Parameters
+        ----------
+        destination : `str`
+            Directory to write into. Created if it does not exist.
+        validate : `bool`, optional
+            If `True`, validate each document against the bundled CAOM
+            schema before writing.
+
+        Returns
+        -------
+        count : `int`
+            Number of documents written.
+        """
+        os.makedirs(destination, exist_ok=True)
+        writer = caom2.ObservationWriter(validate=validate)
+
+        count = 0
+        for observation in self.iter_observations():
+            filename = os.path.join(destination, f"{_safe_filename(observation.observation_id)}.xml")
+            with open(filename, "wb") as handle:
+                writer.write(observation, handle)
+            count += 1
+
+        _LOG.info("Wrote %d CAOM observation%s to %s", count, "" if count == 1 else "s", destination)
+        return count
 
     def _format_keywords(self, ref: DatasetRef, record: dict[str, Any]) -> dict[str, Any]:
         """Build the namespace used to expand configuration templates.
@@ -469,7 +542,7 @@ class CaomExporter:
             if config.em_band:
                 energy_bands = caom2.caom_util.TypedSet(caom2.EnergyBand, caom2.EnergyBand[config.em_band])
             plane.energy = caom2.Energy(
-                bounds=caom2.Interval(lower, upper),
+                bounds=_interval(lower, upper),
                 bandpass_name=record.get("em_filter_name"),
                 resolving_power=resolving_power,
                 energy_bands=energy_bands,
@@ -479,7 +552,7 @@ class CaomExporter:
         t_max = record.get("t_max")
         if t_min is not None and t_max is not None:
             plane.time = caom2.Time(
-                bounds=caom2.Interval(t_min, t_max),
+                bounds=_interval(t_min, t_max),
                 exposure=record.get("t_exptime"),
             )
 
