@@ -1,0 +1,3 @@
+Added a new ``butler obscore export-caom`` command that exports Butler datasets as CAOM observations, one XML document per observation.
+The command is driven by a new ``caom`` section in the existing ObsCore configuration files, so the CAOM output is built from the same registry records as the ObsCore output and cannot drift away from it.
+It requires the optional ``caom2`` dependency, installed with ``pip install lsst-dax-obscore[caom]``.

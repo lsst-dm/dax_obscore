@@ -27,9 +27,11 @@ import datetime
 from collections.abc import Iterable
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from lsst.daf.butler.registry.obscore import ObsCoreConfig
+
+from .caom_config import CaomConfig
 
 
 class WhereBind(BaseModel):
@@ -133,6 +135,24 @@ class ExporterConfig(ObsCoreConfig):
 
     origin: DataOrigin | None = None
     """Optional provenance information for this export."""
+
+    caom: CaomConfig | None = None
+    """Optional CAOM extensions, used only by the CAOM exporter."""
+
+    @model_validator(mode="after")
+    def _check_caom_dataset_types(self) -> ExporterConfig:
+        """Check CAOM dataset types are known to the ObsCore config.
+
+        Returns
+        -------
+        config : `ExporterConfig`
+            This configuration, unchanged.
+        """
+        if self.caom is not None:
+            unknown = set(self.caom.dataset_types) - set(self.dataset_types)
+            if unknown:
+                raise ValueError(f"CAOM dataset types {sorted(unknown)} are not defined in 'dataset_types'.")
+        return self
 
     def select_dataset_types(self, dataset_types: Iterable[str]) -> None:
         """Update the configuration to include only these dataset types.
