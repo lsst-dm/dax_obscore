@@ -209,7 +209,7 @@ class _DerivedRegionFactory(DerivedRegionFactory):
         self._data_id: DataCoordinate | None = None
         self._region: Region | None = None
 
-    def set(self, data_id: DataCoordinate, region: Region) -> None:
+    def set(self, data_id: DataCoordinate, region: Region | None) -> None:
         """Set region for specified DataId.
 
         Parameters
@@ -217,7 +217,7 @@ class _DerivedRegionFactory(DerivedRegionFactory):
         data_id : `~lsst.daf.butler.DataCoordinate`
             Data ID that will be matched against parameter of
             `derived_region`.
-        region : `Region`
+        region : `Region` or `None`
             Corresponding region.
         """
         self._data_id = data_id
