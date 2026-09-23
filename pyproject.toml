@@ -46,6 +46,7 @@ daf_butler = "lsst.dax.obscore.siav2:get_daf_butler_siav2_handler"
 
 [project.optional-dependencies]
 postgres = ["psycopg2"]
+caom = ["caom2 >= 2.6"]
 
 test = [
     "pytest >= 3.2",

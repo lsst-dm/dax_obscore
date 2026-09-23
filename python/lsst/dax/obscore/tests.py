@@ -26,6 +26,7 @@ __all__ = ["DaxObsCoreTestMixin"]
 from lsst.daf.butler import Butler, Config
 from lsst.daf.butler.registry.obscore import DatasetTypeConfig
 from lsst.dax.obscore import ExporterConfig
+from lsst.dax.obscore.caom_config import CaomConfig
 
 
 class DaxObsCoreTestMixin:
@@ -91,5 +92,43 @@ class DaxObsCoreTestMixin:
                 "article": "10.rubin/article",
                 "publication_date": "2025-06-30",
             },
+        )
+        return config
+
+    def make_caom_config(self) -> ExporterConfig:
+        """Return an exporter configuration with a CAOM block.
+
+        Returns
+        -------
+        config : `ExporterConfig`
+            Configuration covering the mock dataset types, extended with
+            CAOM settings.
+        """
+        config = self.make_export_config()
+        config.caom = CaomConfig.model_validate(
+            {
+                "telescope_name": "Subaru Telescope",
+                "proposal_id": "TEST-PROPOSAL",
+                "em_band": "OPTICAL",
+                "provenance": {"name": "LSST Science Pipelines", "version": "v29.0"},
+                "read_groups": ["ivo://example.org/gms?TEST"],
+                "content_type": "application/fits",
+                "artifact_uri_fmt": "cadc:TEST/{dataset_type}/{id}",
+                "dataset_types": {
+                    "_mock_calexp": {
+                        "observation_id_fmt": "{records[visit].name}",
+                        "product_id_fmt": "calexp-{detector}",
+                        "s_pixel_scale": 0.17,
+                        "auxiliary_datasets": {"_mock_calexp_background": "auxiliary"},
+                    },
+                    "_mock_deepCoadd": {
+                        "observation_id_fmt": "coadd-{tract}",
+                        "product_id_fmt": "deepCoadd-{patch}-{band}",
+                        "derived": True,
+                        "algorithm": "mock.coadd",
+                        "s_pixel_scale": 0.17,
+                    },
+                },
+            }
         )
         return config

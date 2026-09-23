@@ -1124,6 +1124,285 @@ data:
     path: HSC/runs/ci_hsc/calexp/20131102/i/HSC-I/904014/calexp_HSC_i_HSC-I_904014_1_54_HSC_runs_ci_hsc_20240806T180642Z.fits
     formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
 - type: dataset_type
+  name: _mock_calexp_background
+  dimensions:
+  - band
+  - instrument
+  - day_obs
+  - detector
+  - physical_filter
+  - visit
+  storage_class: ExposureF
+  is_calibration: false
+- type: dataset
+  dataset_type: _mock_calexp_background
+  run: HSC/runs/ci_hsc
+  records:
+  - dataset_id:
+    - !uuid '3cc50d74-edf8-43fa-a79f-c5faf134ec21'
+    data_id:
+    - instrument: HSC
+      detector: 23
+      visit: 903334
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903334/calexp_HSC_r_HSC-R_903334_0_26_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '3f0d32ff-27d4-4563-9f53-0fdde8a7d7bc'
+    data_id:
+    - instrument: HSC
+      detector: 22
+      visit: 903334
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903334/calexp_HSC_r_HSC-R_903334_0_27_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '0b2ea2eb-c525-463f-ab0f-cee9c6aa7070'
+    data_id:
+    - instrument: HSC
+      detector: 16
+      visit: 903334
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903334/calexp_HSC_r_HSC-R_903334_0_30_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '500b88e5-57fb-45d1-8c6e-0cb7613cf1a1'
+    data_id:
+    - instrument: HSC
+      detector: 100
+      visit: 903334
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903334/calexp_HSC_r_HSC-R_903334_0_31_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'f4c74537-2b25-4db4-94a4-ce4152415c17'
+    data_id:
+    - instrument: HSC
+      detector: 24
+      visit: 903336
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903336/calexp_HSC_r_HSC-R_903336_0_25_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '8c657a12-cf8d-4d01-96dd-bfa2f0ad70a4'
+    data_id:
+    - instrument: HSC
+      detector: 17
+      visit: 903336
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903336/calexp_HSC_r_HSC-R_903336_0_29_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'd5061332-e988-4fc0-bbc6-4179bf96bbcf'
+    data_id:
+    - instrument: HSC
+      detector: 25
+      visit: 903338
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903338/calexp_HSC_r_HSC-R_903338_0_24_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '0e8e71f0-4a0f-4969-93f4-2126bff77cdf'
+    data_id:
+    - instrument: HSC
+      detector: 18
+      visit: 903338
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903338/calexp_HSC_r_HSC-R_903338_0_28_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '6573437e-bd58-43e0-a5a2-b5e95fde3b0b'
+    data_id:
+    - instrument: HSC
+      detector: 100
+      visit: 903342
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903342/calexp_HSC_r_HSC-R_903342_0_31_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '12f12a45-0880-49ea-94ca-ddeb1af98026'
+    data_id:
+    - instrument: HSC
+      detector: 10
+      visit: 903342
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903342/calexp_HSC_r_HSC-R_903342_1_36_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '4362fd11-58df-4cfd-ac7f-d4ad744115e6'
+    data_id:
+    - instrument: HSC
+      detector: 4
+      visit: 903342
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903342/calexp_HSC_r_HSC-R_903342_1_42_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '47d68d95-cc9f-426d-93f3-a4b394ae1cf2'
+    data_id:
+    - instrument: HSC
+      detector: 11
+      visit: 903344
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903344/calexp_HSC_r_HSC-R_903344_1_37_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '41e4c509-9632-4291-b191-00344f2672db'
+    data_id:
+    - instrument: HSC
+      detector: 5
+      visit: 903344
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903344/calexp_HSC_r_HSC-R_903344_1_43_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'ea62d8a8-ee6f-49cd-bd99-e5a183b4cd35'
+    data_id:
+    - instrument: HSC
+      detector: 0
+      visit: 903344
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903344/calexp_HSC_r_HSC-R_903344_1_53_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '6ce593c9-2688-4383-9070-50a57b15bdef'
+    data_id:
+    - instrument: HSC
+      detector: 12
+      visit: 903346
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903346/calexp_HSC_r_HSC-R_903346_1_38_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '25575e61-afa6-4bdc-ad0b-d2d21f41f112'
+    data_id:
+    - instrument: HSC
+      detector: 6
+      visit: 903346
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903346/calexp_HSC_r_HSC-R_903346_1_44_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'd8287615-1f02-4fe0-a93f-386422083e16'
+    data_id:
+    - instrument: HSC
+      detector: 1
+      visit: 903346
+    path: HSC/runs/ci_hsc/calexp_background/20130617/r/HSC-R/903346/calexp_HSC_r_HSC-R_903346_1_54_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '91b577b1-a878-4a25-aba3-1c14ae960e5e'
+    data_id:
+    - instrument: HSC
+      detector: 23
+      visit: 903986
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/903986/calexp_HSC_i_HSC-I_903986_0_26_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '3233cd13-7b0a-49fa-be2f-8921a041c285'
+    data_id:
+    - instrument: HSC
+      detector: 22
+      visit: 903986
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/903986/calexp_HSC_i_HSC-I_903986_0_27_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'ac864330-1a50-4df8-91b0-62f5f4b9a199'
+    data_id:
+    - instrument: HSC
+      detector: 16
+      visit: 903986
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/903986/calexp_HSC_i_HSC-I_903986_0_30_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'b2c46bfb-9390-48a3-94f4-c09414c3e4da'
+    data_id:
+    - instrument: HSC
+      detector: 100
+      visit: 903986
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/903986/calexp_HSC_i_HSC-I_903986_0_31_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'ae35f476-ead3-42d5-81ef-96e1c10ed95f'
+    data_id:
+    - instrument: HSC
+      detector: 24
+      visit: 903988
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/903988/calexp_HSC_i_HSC-I_903988_0_25_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '5c582ad2-9f9d-44c5-85fd-5cdb7c22ccf4'
+    data_id:
+    - instrument: HSC
+      detector: 23
+      visit: 903988
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/903988/calexp_HSC_i_HSC-I_903988_0_26_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '7bc31fc5-0a56-4db4-864c-f06964199250'
+    data_id:
+    - instrument: HSC
+      detector: 17
+      visit: 903988
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/903988/calexp_HSC_i_HSC-I_903988_0_29_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'c9d50275-4d9f-47b6-82a3-d5f2dcb8cc23'
+    data_id:
+    - instrument: HSC
+      detector: 16
+      visit: 903988
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/903988/calexp_HSC_i_HSC-I_903988_0_30_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '1d6b38c6-0023-47b2-94b6-3e463aba8e0a'
+    data_id:
+    - instrument: HSC
+      detector: 25
+      visit: 903990
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/903990/calexp_HSC_i_HSC-I_903990_0_24_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'ae578a72-b82f-427c-b879-407c93f0df41'
+    data_id:
+    - instrument: HSC
+      detector: 18
+      visit: 903990
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/903990/calexp_HSC_i_HSC-I_903990_0_28_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'd632db54-0c0e-42ff-9544-297d8baca8b0'
+    data_id:
+    - instrument: HSC
+      detector: 100
+      visit: 904010
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/904010/calexp_HSC_i_HSC-I_904010_0_31_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '5574b0f6-1fbf-4b55-b77f-79311885fc99'
+    data_id:
+    - instrument: HSC
+      detector: 10
+      visit: 904010
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/904010/calexp_HSC_i_HSC-I_904010_1_36_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'd84f6117-8047-4194-999b-776d2b836420'
+    data_id:
+    - instrument: HSC
+      detector: 4
+      visit: 904010
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/904010/calexp_HSC_i_HSC-I_904010_1_42_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid '2cc0ac59-b03a-41fb-b8ca-afb7ce1dde6f'
+    data_id:
+    - instrument: HSC
+      detector: 12
+      visit: 904014
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/904014/calexp_HSC_i_HSC-I_904014_1_38_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'ccbb8479-f3b1-40f2-959f-5c149fc12533'
+    data_id:
+    - instrument: HSC
+      detector: 6
+      visit: 904014
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/904014/calexp_HSC_i_HSC-I_904014_1_44_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+  - dataset_id:
+    - !uuid 'ac0dd5aa-22e1-4ff8-955b-baf274fbafef'
+    data_id:
+    - instrument: HSC
+      detector: 1
+      visit: 904014
+    path: HSC/runs/ci_hsc/calexp_background/20131102/i/HSC-I/904014/calexp_HSC_i_HSC-I_904014_1_54_HSC_runs_ci_hsc_20240806T180642Z.fits
+    formatter: lsst.daf.butler.formatters.yaml.YamlFormatter
+- type: dataset_type
   name: _mock_deepCoadd
   dimensions:
   - band

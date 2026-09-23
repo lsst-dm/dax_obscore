@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["ObscoreExporter"]
 
 import contextlib
+import dataclasses
 import datetime
 import io
 from collections.abc import Iterator
@@ -41,7 +42,7 @@ from pyarrow import Table as ArrowTable
 from pyarrow.csv import CSVWriter, WriteOptions
 from pyarrow.parquet import ParquetWriter
 
-from lsst.daf.butler import Butler, DataCoordinate, ddl
+from lsst.daf.butler import Butler, DataCoordinate, DatasetRef, ddl
 from lsst.daf.butler.formatters.parquet import arrow_to_numpy
 from lsst.daf.butler.registry.obscore import (
     DerivedRegionFactory,
@@ -235,6 +236,20 @@ class _DerivedRegionFactory(DerivedRegionFactory):
         return None
 
 
+@dataclasses.dataclass
+class _QueryState:
+    """Mutable state shared between the record generator and its callers.
+
+    Notes
+    -----
+    The generator cannot return a value to a caller that is iterating it,
+    so the overflow flag is carried here instead.
+    """
+
+    overflow: bool = False
+    """`True` if more records matched the query than the requested limit."""
+
+
 class ObscoreExporter:
     """Class for extracting and exporting of the datasets in ObsCore format.
 
@@ -278,6 +293,42 @@ class ObscoreExporter:
         """
         for record_batch, _ in self._make_record_batches(self.config.batch_size, limit=limit):
             yield from record_batch.to_pylist()
+
+    def _resolve_uris(self, refs: list[DatasetRef]) -> dict[Any, str]:
+        """Resolve Butler URIs for a batch of dataset references.
+
+        Parameters
+        ----------
+        refs : `list` [ `~lsst.daf.butler.DatasetRef` ]
+            References to resolve.
+
+        Returns
+        -------
+        uris : `dict` [ `~lsst.daf.butler.DatasetId`, `str` ]
+            Mapping from dataset ID to primary URI. Datasets with no
+            resolvable URI are absent, and the mapping is empty if the
+            butler has no datastore.
+
+        Notes
+        -----
+        Resolution is done in bulk rather than one call per dataset. A
+        butler without a datastore, or files that are not present, produce
+        a warning rather than an error, because the CAOM export can fall
+        back to a configured URI template.
+        """
+        if not refs:
+            return {}
+        try:
+            resolved = self.butler.get_many_uris(refs, predict=False)
+        except Exception as exc:
+            _LOG.warning("Could not resolve Butler URIs (%s); falling back to configured templates.", exc)
+            return {}
+
+        uris: dict[Any, str] = {}
+        for ref, ref_uris in resolved.items():
+            if ref_uris.primaryURI is not None:
+                uris[ref.id] = str(ref_uris.primaryURI)
+        return uris
 
     def to_parquet(self, output: str) -> None:
         """Export Butler datasets as ObsCore Data Model in parquet format.
@@ -551,19 +602,30 @@ class ObscoreExporter:
 
         return pyarrow.schema(schema)
 
-    def _make_record_batches(
-        self, batch_size: int = 10_000, limit: int | None = None
-    ) -> Iterator[tuple[RecordBatch, bool]]:
-        """Generate batches of records to save to a file.
+    def _iter_record_refs(
+        self, state: _QueryState, limit: int | None = None
+    ) -> Iterator[tuple[DatasetRef, Region | None, dict[str, Any]]]:
+        """Query the registry and generate ObsCore records with their refs.
 
-        Yields the batches and a flag indicating whether an overflow condition
-        was hit.
+        Parameters
+        ----------
+        state : `_QueryState`
+            Mutable state updated in place. The ``overflow`` attribute is
+            set to `True` if more records matched than ``limit`` allowed.
+        limit : `int` or `None`, optional
+            Maximum number of records to generate. If `None` there is no
+            limit.
+
+        Yields
+        ------
+        ref : `~lsst.daf.butler.DatasetRef`
+            Reference to the dataset the record describes.
+        region : `~lsst.sphgeom.Region` or `None`
+            Spatial region associated with the dataset, if the dataset type
+            has a relevant spatial dimension.
+        record : `dict` [ `str`, `~typing.Any` ]
+            The ObsCore record, keyed by column name.
         """
-        batch = _BatchCollector(self.schema)
-
-        # Set overflow flag.
-        overflow = False
-
         collections: Any = self.config.collections
         if not collections:
             raise ValueError("No collections specified. Querying all collections is not allowed.")
@@ -622,7 +684,6 @@ class ObscoreExporter:
                         dataId = ref.dataId
                         region = raw_row[region_key] if region_key else None
                         _LOG.debug("New record, dataId=%s region=%s", dataId.mapping, region)
-                        # _LOG.debug("New record, records=%s", dataId.records)
 
                         self._derived_region_factory.set(dataId, region)
                         record = self.record_factory(ref)
@@ -633,33 +694,47 @@ class ObscoreExporter:
                         if limit is not None and count == limit:
                             # Hit the +1 so should not add this to the batch.
                             _LOG.debug("Got one more than requested limit so dropping final record.")
-                            overflow = True
+                            state.overflow = True
                             break
 
-                        batch.add_to_batch(record)
-                        if batch.size >= batch_size:
-                            _LOG.debug("Saving next record batch, size=%s", batch.size)
-                            yield (batch.make_record_batch(), overflow)
+                        yield ref, region, record
 
                     if limit is not None:
                         limit -= count
-                    if overflow:
+                    if state.overflow:
                         # We counted one too many so adjust for the log
                         # message.
                         count -= 1
 
                     _LOG.info("Copied %d records from dataset type %s", count, dataset_type_name)
 
-                    if overflow:
+                    if state.overflow:
                         # No more queries need to run.
                         # This breaks out one level of nesting.
                         break
 
-                if overflow:
+                if state.overflow:
                     # Stop further dataset type queries.
                     break
+
+    def _make_record_batches(
+        self, batch_size: int = 10_000, limit: int | None = None
+    ) -> Iterator[tuple[RecordBatch, bool]]:
+        """Generate batches of records to save to a file.
+
+        Yields the batches and a flag indicating whether an overflow condition
+        was hit.
+        """
+        batch = _BatchCollector(self.schema)
+        state = _QueryState()
+
+        for _ref, _region, record in self._iter_record_refs(state, limit=limit):
+            batch.add_to_batch(record)
+            if batch.size >= batch_size:
+                _LOG.debug("Saving next record batch, size=%s", batch.size)
+                yield (batch.make_record_batch(), state.overflow)
 
         # Final batch if anything is there
         if batch.size > 0:
             _LOG.debug("Saving final record batch, size=%s", batch.size)
-            yield (batch.make_record_batch(), overflow)
+            yield (batch.make_record_batch(), state.overflow)
