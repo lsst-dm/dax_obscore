@@ -80,6 +80,42 @@ def export(*args: Any, **kwargs: Any) -> None:
 
 
 @obscore.command(
+    short_help="Export Butler datasets as CAOM observations",
+    cls=ButlerCommand,
+)
+@repo_argument(required=True)
+@destination_argument(
+    required=True,
+    help="DESTINATION is the directory to write the CAOM XML documents into.",
+    type=MWPath(file_okay=False, dir_okay=True, writable=True),
+)
+@click.option(
+    "--config",
+    "-c",
+    help="Location of the configuration file in YAML format, path or URL.",
+    required=True,
+)
+@dataset_type_option(
+    help=(
+        "Comma-separated list of dataset types. "
+        "If specified it must be a subset of the dataset types defined in the 'caom' "
+        "section of the configuration file."
+    )
+)
+@collections_option()
+@where_option()
+@options_file_option()
+def export_caom(*args: Any, **kwargs: Any) -> None:
+    """Export Butler datasets as CAOM observations, one XML document per
+    observation.
+
+    Requires the optional caom2 dependency, installed with
+    'pip install lsst-dax-obscore[caom]'.
+    """
+    script.obscore_export_caom(*args, **kwargs)
+
+
+@obscore.command(
     short_help=(
         "Udpate exposure-related records (e.g. raw) in obscore table that do not have region information "
         "from matching visit-related records."

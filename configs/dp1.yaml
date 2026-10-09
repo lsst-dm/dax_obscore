@@ -106,3 +106,43 @@ origin:
   reference_url: "https://dp1.lsst.io"
   article: 10.71929/rubin/2570536
   title: "Legacy Survey of Space and Time Data Preview 1"
+caom:
+  telescope_name: "8.4-meter Simonyi Survey Telescope"
+  proposal_id: LSST
+  em_band: OPTICAL
+  provenance:
+    name: "LSST Science Pipelines"
+    version: "v29.0"
+    project: DRP
+  read_groups:
+    - "ivo://cadc.nrc.ca/gms?LSST_CADC"
+  intent: science
+  observation_type: science
+  content_type: application/fits
+  artifact_uri_fmt: "cadc:LSST/{dataset_type}/{id}"
+  dataset_types:
+    raw:
+      observation_id_fmt: "{records[exposure].obs_id}"
+      product_id_fmt: "raw-{records[detector].full_name}"
+      observation_type_fmt: "{records[exposure].observation_type}"
+      s_pixel_scale: 0.2
+    visit_image:
+      observation_id_fmt: "{records[visit].name}"
+      product_id_fmt: "visit_image-{records[detector].full_name}"
+      s_pixel_scale: 0.2
+    difference_image:
+      observation_id_fmt: "{records[visit].name}"
+      product_id_fmt: "difference_image-{records[detector].full_name}"
+      s_pixel_scale: 0.2
+    deep_coadd:
+      observation_id_fmt: "{skymap}-{tract}"
+      product_id_fmt: "deep_coadd-{patch}-{band}"
+      derived: true
+      algorithm: "lsst.deep_coadd.DRP.DP1.DM-51335"
+      s_pixel_scale: 0.2
+    template_coadd:
+      observation_id_fmt: "{skymap}-{tract}"
+      product_id_fmt: "template_coadd-{patch}-{band}"
+      derived: true
+      algorithm: "lsst.template_coadd.DRP.DP1.DM-51335"
+      s_pixel_scale: 0.2

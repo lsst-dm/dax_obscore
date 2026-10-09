@@ -73,6 +73,19 @@ If the attribute in the template string does not exist for a particular record t
 ``obscore-export`` will read datasets from Registry using collections specified in ``collections`` configuration attribute and dataset types that appear in ``dataset_types`` attribute (indexed by dataset type names).
 
 
+.. _lsst.dax.obscore-caom:
+
+CAOM export
+===========
+
+``butler obscore export-caom`` exports the same records as ``butler obscore export`` in the Common Archive Observation Model, driven by a ``caom`` section in the same configuration file.
+
+.. toctree::
+   :maxdepth: 2
+
+   caom-export.rst
+
+
 .. _lsst.dax.obscore-entry_points:
 
 Entry Points
@@ -101,4 +114,16 @@ Python API reference
    :members:
 
 .. autoclass:: lsst.dax.obscore.ObscoreExporter
+   :members:
+
+.. autoclass:: lsst.dax.obscore.caom_config.CaomConfig
+   :members:
+
+.. autoclass:: lsst.dax.obscore.caom_config.CaomDatasetTypeConfig
+   :members:
+
+.. autoclass:: lsst.dax.obscore.caom_config.CaomProvenanceConfig
+   :members:
+
+.. autoclass:: lsst.dax.obscore.caom_exporter.CaomExporter
    :members:
