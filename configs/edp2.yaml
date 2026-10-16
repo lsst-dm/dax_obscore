@@ -5,7 +5,7 @@ obs_collection: LSST.DP2
 collections: ["LSSTCam/runs/DRP/DP2"]
 use_butler_uri: false
 fallback_instrument: LSSTCam
-obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-dp2?repo=dp2&id={id}"
+obs_publisher_did_fmt: "ivo://org.rubinobs/usdac/lsst-dp2/datasets?repo=dp2&id={id}"
 dataset_types:
   deep_coadd:
     dataproduct_type: image
@@ -14,7 +14,7 @@ dataset_types:
     obs_id_fmt: "{skymap}-{tract}-{patch}"
     o_ucd: phot.flux.density
     access_format: "application/x-votable+xml;content=datalink"
-    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2Flsst-dp2%3Frepo%3Ddp2%26id%3D{id}"
+    datalink_url_fmt: "https://data.lsst.cloud/api/datalink/links?ID=ivo%3A%2F%2Forg.rubinobs%2fusdac%2Flsst-dp2%2Fdatasets%3Frepo%3Ddp2%26id%3D{id}"
     s_xel: [3300, 3300]
     extra_columns:
       obs_title:
@@ -53,8 +53,8 @@ spectral_ranges:
   "y": [927.8e-9, 1100.0e-9]
 origin:
   publisher: "NSF-DOE Vera C. Rubin Observatory US Data Access Center"
-  publication_date: 2026-06-30
-  citation:
+  publication_date: 2026-07-27
+  citation: 10.71929/rubin/3382528
   reference_url: "https://dp2.lsst.io"
-  article:
+  article: 10.71929/rubin/3377440
   title: "Legacy Survey of Space and Time Data Preview 2"
